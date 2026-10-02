@@ -65,4 +65,56 @@ class AuthController extends Controller
     {
         return response()->json($request->user());
     }
+
+    // ==========================================
+    // NUEVAS FUNCIONES PARA EL CLIENTE
+    // ==========================================
+
+    public function loginCliente(Request $request)
+    {
+        $request->validate([
+            'dni' => 'required|string|max:11'
+        ]);
+
+        // Buscar si existe un usuario con ese DNI y que su rol sea 'cliente' usando el modelo Usuario
+        $user = Usuario::where('dni', $request->dni)->where('rol', 'cliente')->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Cliente no encontrado'], 404);
+        }
+
+        // Generar el token de acceso de Sanctum
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'usuario' => $user
+        ]);
+    }
+
+    public function registroCliente(Request $request)
+    {
+        // Validamos que el DNI sea único en la tabla "usuarios" (no en "users")
+        $request->validate([
+            'dni' => 'required|string|max:11|unique:usuarios,dni',
+            'nombre' => 'required|string|max:255'
+        ]);
+
+        // Creamos al cliente usando el modelo Usuario y la columna "nombre"
+        $user = Usuario::create([
+            'nombre' => $request->nombre,
+            'email' => $request->dni . '@cliente.dtodo.com',
+            'password' => bcrypt($request->dni), // Contraseña ficticia (no la usará)
+            'rol' => 'cliente',
+            'dni' => $request->dni,
+            'activo' => 1 // Lo marcamos como activo por si tu sistema lo requiere
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'usuario' => $user
+        ]);
+    }
 }

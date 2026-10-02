@@ -13,14 +13,21 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes - D'Todo (Alternativa 2: Gestión con Alertas y Roles)
+| API Routes - D'Todo 
 |--------------------------------------------------------------------------
 */
 
-// --- Público ---
+// ==========================================
+// --- PÚBLICO (No requieren token) ---
+// ==========================================
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login-cliente', [AuthController::class, 'loginCliente']);
+Route::post('/registro-cliente', [AuthController::class, 'registroCliente']);
 
-// --- Autenticado (Sanctum) ---
+
+// ==========================================
+// --- AUTENTICADO (Requieren token Sanctum) ---
+// ==========================================
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);

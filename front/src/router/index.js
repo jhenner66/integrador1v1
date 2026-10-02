@@ -38,6 +38,13 @@ const routes = [
     component: () => import('../views/Alertas.vue'),
     meta: { roles: ['administrador'] },
   },
+  // NUEVA RUTA EXCLUSIVA PARA EL CLIENTE
+  {
+    path: '/catalogo',
+    name: 'catalogo',
+    component: () => import('../views/Catalogo.vue'),
+    meta: { roles: ['administrador', 'cliente'] },
+  },
 ]
 
 const router = createRouter({
@@ -48,28 +55,26 @@ const router = createRouter({
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
-  // 1. Validar si requiere autenticación
   if (!to.meta.public && !auth.estaAutenticado) {
     return { name: 'login' }
   }
 
-  // 2. Si ya está autenticado y va al login, redirigir según su rol
   if (to.name === 'login' && auth.estaAutenticado) {
     const rol = (auth.usuario?.rol || auth.user?.rol || '').toLowerCase()
     if (rol === 'vendedor') return { name: 'ventas' }
     if (rol === 'almacen') return { name: 'inventario' }
+    if (rol === 'cliente') return { name: 'catalogo' } // Redirigir al cliente
     return { name: 'dashboard' }
   }
 
-  // 3. Validar seguridad por roles en la ruta solicitada
   const rolesPermitidos = to.meta.roles
   if (rolesPermitidos && auth.estaAutenticado) {
     const rolUsuario = (auth.usuario?.rol || auth.user?.rol || '').toLowerCase()
     
     if (!rolesPermitidos.includes(rolUsuario)) {
-      // Redirigir a su vista predeterminada si no tiene permisos
       if (rolUsuario === 'vendedor') return { name: 'ventas' }
       if (rolUsuario === 'almacen') return { name: 'inventario' }
+      if (rolUsuario === 'cliente') return { name: 'catalogo' } // Bloquear y enviar a catálogo
       return { name: 'dashboard' }
     }
   }

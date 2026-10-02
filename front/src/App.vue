@@ -11,13 +11,20 @@
           <span class="font-extrabold text-gray-800 text-xl tracking-tight">D'Todo</span>
         </div>
 
-        <!-- 2. Enlaces de Navegación (Centrados) -->
+
+        <!-- Enlaces de Navegación por Rol -->
         <nav class="hidden md:flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+          
+          <!-- Enlaces de Administradores y Empleados -->
           <router-link v-if="auth.esAdministrador" to="/dashboard" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Panel Principal</router-link>
           <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/inventario" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Inventario</router-link>
           <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/pedidos" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Pedidos</router-link>
           <router-link v-if="auth.esAdministrador || auth.esVendedor" to="/ventas" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Ventas</router-link>
           <router-link v-if="auth.esAdministrador" to="/alertas" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Alertas</router-link>
+          
+          <!-- NUEVO: Enlace exclusivo para el Cliente (y Admin para poder verlo) -->
+          <router-link v-if="auth.esAdministrador || (auth.usuario?.rol || auth.user?.rol) === 'cliente'" to="/catalogo" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Catálogo de Productos</router-link>
+        
         </nav>
 
         <!-- 3. Perfil de Usuario y Salida (Apegado totalmente a la Derecha) -->

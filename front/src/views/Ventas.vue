@@ -46,20 +46,29 @@
           </select>
         </div>
 
+        <!-- DNI o RUC -->
         <div v-if="nuevaVenta.tipo_comprobante === 'boleta'">
-          <label class="block text-sm font-medium text-gray-700 mb-1">DNI del Cliente (8 dígitos)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">DNI del Cliente</label>
           <input v-model="nuevaVenta.dni_ruc" type="text" maxlength="8" placeholder="Ej: 72839210" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
         </div>
         <div v-else>
-          <label class="block text-sm font-medium text-gray-700 mb-1">RUC de la Empresa (11 dígitos)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">RUC de la Empresa</label>
           <input v-model="nuevaVenta.dni_ruc" type="text" maxlength="11" placeholder="Ej: 20601234568" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
         </div>
 
+        <!-- Nombre del Cliente (Solo Boleta) -->
+        <div v-if="nuevaVenta.tipo_comprobante === 'boleta'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Cliente</label>
+          <input v-model="nuevaVenta.nombre_cliente" type="text" placeholder="Ej: Juan Pérez" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
+        </div>
+
+        <!-- Razón Social (Solo Factura) -->
         <div v-if="nuevaVenta.tipo_comprobante === 'factura'">
           <label class="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
           <input v-model="nuevaVenta.razon_social" type="text" placeholder="Ej: Minimarket SAC" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
         </div>
 
+        <!-- Método de Pago -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
           <select v-model="nuevaVenta.metodo_pago" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-teal-500">
@@ -69,6 +78,7 @@
           </select>
         </div>
 
+        <!-- Efectivo con el que paga -->
         <div v-if="nuevaVenta.metodo_pago === 'efectivo'">
           <label class="block text-sm font-medium text-gray-700 mb-1">Paga con (S/)</label>
           <input v-model.number="nuevaVenta.monto_efectivo" type="number" step="0.1" placeholder="Ej: 50.00" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
@@ -143,7 +153,7 @@
       <div class="bg-white rounded-2xl w-full max-w-4xl shadow-xl flex flex-col max-h-[90vh]">
         <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
           <div>
-            <h2 class="text-xl font-bold text-gray-800">Comprobantes Emitidos (Boletas y Facturas)</h2>
+            <h2 class="text-xl font-bold text-gray-800">Comprobantes Emitidos</h2>
             <p class="text-sm text-gray-500 mt-1">Listado histórico de transacciones realizadas</p>
           </div>
           <button @click="modalComprobantes = false" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
@@ -156,7 +166,7 @@
                 <th class="p-3 font-semibold">ID / N°</th>
                 <th class="p-3 font-semibold">Fecha</th>
                 <th class="p-3 font-semibold">Tipo</th>
-                <th class="p-3 font-semibold">Cliente / DNI-RUC</th>
+                <th class="p-3 font-semibold">Cliente / Razón Social</th>
                 <th class="p-3 font-semibold text-right">Total</th>
                 <th class="p-3 font-semibold text-center">Acción</th>
               </tr>
@@ -173,7 +183,7 @@
                     {{ v.tipo_comprobante || 'boleta' }}
                   </span>
                 </td>
-                <td class="p-3">{{ v.dni_ruc || v.razon_social || 'Cliente Varios' }}</td>
+                <td class="p-3">{{ v.nombre_cliente || v.razon_social || 'Cliente Varios' }} <br><span class="text-xs text-gray-400">{{ v.dni_ruc ? 'Doc: ' + v.dni_ruc : '' }}</span></td>
                 <td class="p-3 text-right font-bold text-gray-800">S/ {{ Number(v.total || v.monto_total || 0).toFixed(2) }}</td>
                 <td class="p-3 text-center">
                   <button @click="reimprimirComprobante(v)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs transition">
@@ -207,6 +217,7 @@ const nuevaVenta = ref({
   metodo_pago: 'efectivo',
   tipo_comprobante: 'boleta',
   dni_ruc: '',
+  nombre_cliente: '',
   razon_social: '',
   monto_efectivo: 0
 })
@@ -272,6 +283,15 @@ function imprimirTicket(datosVenta, itemsDetalle, total, efectivo, vuelto) {
   const opGravada = (total / 1.18).toFixed(2);
   const igv = (total - (total / 1.18)).toFixed(2);
 
+  // LOGICA PARA MOSTRAR LOS DATOS CORRECTOS EN EL TICKET
+  let nombreAMostrar = datosVenta.tipo_comprobante === 'boleta' 
+    ? (datosVenta.nombre_cliente || 'CLIENTE VARIOS') 
+    : (datosVenta.razon_social || 'SIN RAZON SOCIAL');
+  
+  let documentoAMostrar = datosVenta.tipo_comprobante === 'boleta' 
+    ? `DNI: ${datosVenta.dni_ruc || '00000000'}` 
+    : `RUC: ${datosVenta.dni_ruc || '00000000000'}`;
+
   const htmlTicket = `
     <!DOCTYPE html>
     <html>
@@ -294,8 +314,8 @@ function imprimirTicket(datosVenta, itemsDetalle, total, efectivo, vuelto) {
       <div class="center" style="font-size: 13px; font-weight: bold;">${tipoComp} ELECTRÓNICA</div>
       <div>N°: B001 - 0000${nroAleatorio}</div>
       <div>Fecha: ${fechaActual}</div>
-      <div>Cliente: ${datosVenta.dni_ruc || 'CLIENTE VARIOS'}</div>
-      ${datosVenta.tipo_comprobante === 'factura' ? `<div>Razón Social: ${datosVenta.razon_social || '-'}</div>` : ''}
+      <div>Cliente: ${nombreAMostrar}</div>
+      <div>${documentoAMostrar}</div>
       <div class="line"></div>
       <table>
         <thead>
@@ -365,6 +385,7 @@ async function registrarYImprimirVenta() {
       metodo_pago: nuevaVenta.value.metodo_pago,
       tipo_comprobante: nuevaVenta.value.tipo_comprobante,
       dni_ruc: nuevaVenta.value.dni_ruc,
+      nombre_cliente: nuevaVenta.value.nombre_cliente,
       razon_social: nuevaVenta.value.razon_social,
       monto_efectivo: nuevaVenta.value.monto_efectivo,
       vuelto: calcularVuelto.value
@@ -387,6 +408,7 @@ async function registrarYImprimirVenta() {
       metodo_pago: 'efectivo',
       tipo_comprobante: 'boleta',
       dni_ruc: '',
+      nombre_cliente: '',
       razon_social: '',
       monto_efectivo: 0
     }
@@ -430,7 +452,13 @@ function reimprimirComprobante(venta) {
   })) : [{ nombre: 'Consumo General / Venta #' + venta.id_venta, cantidad: 1, precio: venta.total || venta.monto_total }];
 
   imprimirTicket(
-    { tipo_comprobante: venta.tipo_comprobante || 'boleta', dni_ruc: venta.dni_ruc, razon_social: venta.razon_social, metodo_pago: venta.metodo_pago },
+    { 
+      tipo_comprobante: venta.tipo_comprobante || 'boleta', 
+      dni_ruc: venta.dni_ruc, 
+      nombre_cliente: venta.nombre_cliente,
+      razon_social: venta.razon_social, 
+      metodo_pago: venta.metodo_pago 
+    },
     items,
     Number(venta.total || venta.monto_total || 0),
     Number(venta.monto_efectivo || venta.total || 0),

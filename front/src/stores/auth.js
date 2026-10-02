@@ -3,37 +3,37 @@ import api from '../services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('dtodo_token') || null,
-    usuario: JSON.parse(localStorage.getItem('dtodo_usuario') || 'null'),
+    token: localStorage.getItem('token') || null,
+    // Leemos el usuario del disco duro al recargar la página
+    usuario: JSON.parse(localStorage.getItem('usuario') || 'null') 
   }),
-
   getters: {
     estaAutenticado: (state) => !!state.token,
-    rol: (state) => state.usuario?.rol || null,
     esAdministrador: (state) => state.usuario?.rol === 'administrador',
-    esAlmacen: (state) => state.usuario?.rol === 'almacen',
     esVendedor: (state) => state.usuario?.rol === 'vendedor',
+    esAlmacen: (state) => state.usuario?.rol === 'almacen',
+    esCliente: (state) => state.usuario?.rol === 'cliente'
   },
-
   actions: {
-    async login({ email, password, rol }) {
-      const { data } = await api.post('/login', { email, password, rol })
-      this.token = data.token
-      this.usuario = data.usuario
-      localStorage.setItem('dtodo_token', data.token)
-      localStorage.setItem('dtodo_usuario', JSON.stringify(data.usuario))
+    // Función para guardar todo de forma sincronizada
+    setSesion(token, usuario) {
+      this.token = token
+      this.usuario = usuario
+      localStorage.setItem('token', token)
+      localStorage.setItem('usuario', JSON.stringify(usuario))
+      // Le decimos a Axios que use este token para futuras peticiones
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     },
-
-    async logout() {
-      try {
-        await api.post('/logout')
-      } catch (e) {
-        // Continuar aunque falle la petición al backend
-      }
+    async login(credenciales) {
+      const { data } = await api.post('/login', credenciales)
+      this.setSesion(data.token, data.usuario)
+    },
+    logout() {
       this.token = null
       this.usuario = null
-      localStorage.removeItem('dtodo_token')
-      localStorage.removeItem('dtodo_usuario')
-    },
-  },
+      localStorage.removeItem('token')
+      localStorage.removeItem('usuario')
+      delete api.defaults.headers.common['Authorization']
+    }
+  }
 })

@@ -14,8 +14,9 @@ class Usuario extends Authenticatable
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
 
+    // ¡Aquí agregamos 'dni' al final de la lista!
     protected $fillable = [
-        'nombre', 'email', 'password', 'rol', 'activo',
+        'nombre', 'email', 'password', 'rol', 'activo', 'dni',
     ];
 
     protected $hidden = [
