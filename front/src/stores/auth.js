@@ -1,39 +1,26 @@
 import { defineStore } from 'pinia'
-import api from '../services/api'
+import { ref, computed } from 'vue'
 
-export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: localStorage.getItem('token') || null,
-    // Leemos el usuario del disco duro al recargar la página
-    usuario: JSON.parse(localStorage.getItem('usuario') || 'null') 
-  }),
-  getters: {
-    estaAutenticado: (state) => !!state.token,
-    esAdministrador: (state) => state.usuario?.rol === 'administrador',
-    esVendedor: (state) => state.usuario?.rol === 'vendedor',
-    esAlmacen: (state) => state.usuario?.rol === 'almacen',
-    esCliente: (state) => state.usuario?.rol === 'cliente'
-  },
-  actions: {
-    // Función para guardar todo de forma sincronizada
-    setSesion(token, usuario) {
-      this.token = token
-      this.usuario = usuario
-      localStorage.setItem('token', token)
-      localStorage.setItem('usuario', JSON.stringify(usuario))
-      // Le decimos a Axios que use este token para futuras peticiones
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    },
-    async login(credenciales) {
-      const { data } = await api.post('/login', credenciales)
-      this.setSesion(data.token, data.usuario)
-    },
-    logout() {
-      this.token = null
-      this.usuario = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('usuario')
-      delete api.defaults.headers.common['Authorization']
-    }
+export const useAuthStore = defineStore('auth', () => {
+  // Inicializamos leyendo del localStorage para que persista al recargar (F5)
+  const token = ref(localStorage.getItem('dtodo_token') || null)
+  const usuario = ref(JSON.parse(localStorage.getItem('dtodo_usuario')) || null)
+
+  const estaAutenticado = computed(() => !!token.value)
+
+  function iniciarSesion(nuevoToken, nuevoUsuario) {
+    token.value = nuevoToken
+    usuario.value = nuevoUsuario
+    localStorage.setItem('dtodo_token', nuevoToken)
+    localStorage.setItem('dtodo_usuario', JSON.stringify(nuevoUsuario))
   }
+
+  function cerrarSesion() {
+    token.value = null
+    usuario.value = null
+    localStorage.removeItem('dtodo_token')
+    localStorage.removeItem('dtodo_usuario')
+  }
+
+  return { token, usuario, estaAutenticado, iniciarSesion, cerrarSesion }
 })
