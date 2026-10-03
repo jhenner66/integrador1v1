@@ -1,25 +1,69 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const routes = [
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('../views/Login.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('../views/Dashboard.vue'),
+    meta: { roles: ['administrador'] },
+  },
+  {
+    path: '/inventario',
+    name: 'inventario',
+    component: () => import('../views/Inventario.vue'),
+    meta: { roles: ['administrador', 'almacen'] },
+  },
+  {
+    path: '/pedidos',
+    name: 'pedidos',
+    component: () => import('../views/Pedidos.vue'),
+    meta: { roles: ['administrador', 'almacen'] },
+  },
+  {
+    path: '/ventas',
+    name: 'ventas',
+    component: () => import('../views/Ventas.vue'),
+    meta: { roles: ['administrador', 'vendedor'] },
+  },
+  {
+    path: '/alertas',
+    name: 'alertas',
+    component: () => import('../views/Alertas.vue'),
+    meta: { roles: ['administrador'] },
+  },
+  {
+    path: '/catalogo',
+    name: 'catalogo',
+    component: () => import('../views/Catalogo.vue'),
+    meta: { roles: ['administrador', 'cliente'] },
+  },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  // Si la ruta es pública, dejar pasar
   if (to.meta.public) {
     return true
   }
 
-  // Si no está autenticado, al login
   if (!auth.estaAutenticado) {
     return { name: 'login' }
   }
 
-  // Si hay token pero los datos del usuario aún no se cargan en Pinia (caso típico de F5)
   if (auth.estaAutenticado && (!auth.usuario && !auth.user)) {
-    try {
-      // Opcional: si tienes una acción en tu store para recargar el perfil, lánzala aquí
-      // await auth.fetchUser() 
-      return true // Deja pasar para que cargue la vista y monte el store
-    } catch (error) {
-      return { name: 'login' }
-    }
+    return true
   }
 
   if (to.name === 'login' && auth.estaAutenticado) {
@@ -34,7 +78,6 @@ router.beforeEach(async (to) => {
   if (rolesPermitidos && auth.estaAutenticado) {
     const rolUsuario = (auth.usuario?.rol || auth.user?.rol || '').toLowerCase()
     
-    // Si el rol aún no está disponible por la recarga F5, evitamos el bucle temporalmente
     if (!rolUsuario) return true
 
     if (!rolesPermitidos.includes(rolUsuario)) {
@@ -45,3 +88,6 @@ router.beforeEach(async (to) => {
     }
   }
 })
+
+// ¡ESTA LNEA ES LA QUE FALTABA Y CAUSABA EL ERROR!
+export default router
