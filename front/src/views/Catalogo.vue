@@ -50,10 +50,12 @@
     <!-- ========================================== -->
     <main v-if="pasoActual === 0" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       
-      <!-- Ubicación -->
+  
+     <!-- Ubicación -->
       <div class="flex items-center text-sm font-bold text-gray-500 mb-6">
         <svg class="w-4 h-4 mr-1 text-[#3A704F]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        Entrega en Av. Los Olivos 245, Pueblo Libre <button class="ml-2 text-[#234E35] underline">Cambiar</button>
+        Entrega en {{ direccionEntregaGlobal || 'Agrega tu dirección' }} 
+        <button @click="cambiarDireccionGlobal" class="ml-2 text-[#234E35] underline hover:text-[#3A704F]">Cambiar</button>
         <span class="ml-auto text-[#3A704F] bg-[#EAF2EC] px-3 py-1 rounded-full text-xs">En tu puerta en 45-60 min</span>
       </div>
 
@@ -643,7 +645,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue' 
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -709,21 +711,45 @@ const irAlCarrito = () => {
 }
 
 // --- Lógica del Checkout ---
+// --- Lógica de Dirección Global ---
+const direccionEntregaGlobal = ref('Av. Los Olivos 245, Pueblo Libre')
+
+const cambiarDireccionGlobal = () => {
+  const nueva = prompt('Ingresa tu nueva dirección de entrega:', direccionEntregaGlobal.value)
+  if (nueva && nueva.trim() !== '') {
+    direccionEntregaGlobal.value = nueva
+    form.value.direccion = nueva // Actualiza el checkout automáticamente
+  }
+}
+
+// --- Lógica del Checkout (Se autocompleta con los datos de Pinia) ---
 const form = ref({
-  nombres: auth.usuario?.nombre || 'Valeria',
-  apellidos: 'Torres Mendoza',
-  correo: 'valeria.torres@gmail.com',
-  celular: '987 123 456',
+  nombres: auth.usuario?.nombre || '',
+  apellidos: auth.usuario?.apellidos || '',
+  correo: auth.usuario?.correo || '',
+  celular: auth.usuario?.celular || '',
   tipoEntrega: 'domicilio',
-  direccion: 'Av. Los Olivos 245, dpto. 302',
+  direccion: direccionEntregaGlobal.value,
   distrito: 'Pueblo Libre',
   referencia: '',
   metodoPago: 'yape',
   comprobante: 'boleta',
-  dni: '74859632',
+  dni: auth.usuario?.dni || '',
   ruc: '',
   razonSocial: ''
 })
+
+// Magia: Si el usuario actualiza sus datos en el modal de App.vue, 
+// el formulario de compra se actualizará automáticamente en tiempo real.
+watch(() => auth.usuario, (nuevo) => {
+  if (nuevo) {
+    form.value.nombres = nuevo.nombre || form.value.nombres
+    form.value.apellidos = nuevo.apellidos || form.value.apellidos
+    form.value.correo = nuevo.correo || form.value.correo
+    form.value.celular = nuevo.celular || form.value.celular
+    form.value.dni = nuevo.dni || form.value.dni
+  }
+}, { deep: true, immediate: true })
 
 const procesarCompra = () => {
   // Simulando llamada a Laravel...
