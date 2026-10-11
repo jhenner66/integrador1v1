@@ -1,44 +1,64 @@
 <template>
-  <div class="min-h-screen bg-gray-50 font-sans">
+  <div class="min-h-screen bg-[#F9FBF9] font-sans text-[#234E35]">
     
-    <!-- Barra de Navegación Superior (SOLO VISIBLE SI ESTÁ AUTENTICADO) -->
-    <header v-if="auth.estaAutenticado" class="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <!-- NAVEGACIÓN PRINCIPAL GLOBAL (NUEVO DISEÑO PARA TODOS) -->
+    <header v-if="auth.estaAutenticado" class="bg-white border-b border-[#E0EBE2] sticky top-0 z-50 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
-        <!-- 1. Logo y Nombre -->
-        <div class="flex items-center gap-3">
-          <span class="bg-teal-600 text-white font-extrabold px-3 py-2 rounded-xl text-sm shadow-sm">DT</span>
-          <span class="font-extrabold text-gray-800 text-xl tracking-tight">D'Todo</span>
+        <!-- Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" @click="irAlInicio">
+          <div class="bg-[#234E35] text-white p-2 rounded-xl">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold leading-tight">D' Todo</h1>
+            <p class="text-[9px] font-bold tracking-widest text-gray-400 uppercase">Minimarket</p>
+          </div>
         </div>
 
-        <!-- Enlaces de Navegación por Rol -->
-        <nav class="hidden md:flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+        <!-- Menú central dinámico -->
+        <nav class="hidden md:flex items-center gap-8 font-bold text-sm">
           
-          <router-link v-if="auth.esAdministrador" to="/dashboard" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Panel Principal</router-link>
-          <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/inventario" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Inventario</router-link>
-          <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/pedidos" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Pedidos</router-link>
-          <router-link v-if="auth.esAdministrador || auth.esVendedor" to="/ventas" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Ventas</router-link>
-          <router-link v-if="auth.esAdministrador" to="/alertas" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Alertas</router-link>
+          <!-- Enlaces para EMPLEADOS/ADMIN -->
+          <template v-if="!auth.esCliente">
+            <router-link v-if="auth.esAdministrador" to="/dashboard" class="nav-link">Panel</router-link>
+            <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/inventario" class="nav-link">Inventario</router-link>
+            <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/pedidos" class="nav-link">Pedidos</router-link>
+            <router-link v-if="auth.esAdministrador || auth.esVendedor" to="/ventas" class="nav-link">Ventas</router-link>
+            <router-link v-if="auth.esAdministrador" to="/alertas" class="nav-link">Alertas</router-link>
+            <router-link v-if="auth.esAdministrador" to="/catalogo" class="nav-link">Catálogo</router-link>
+          </template>
           
-          <!-- Enlace exclusivo para el Cliente (y Admin para poder verlo) -->
-          <router-link v-if="auth.esAdministrador || (auth.usuario?.rol || auth.user?.rol) === 'cliente'" to="/catalogo" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Catálogo de Productos</router-link>
-        
-        </nav>
+          <!-- Enlaces para CLIENTES -->
+          <template v-else>
+            <router-link to="/catalogo" class="nav-link">Tienda</router-link>
+            <button @click="alertaProximamente('Mis pedidos')" class="nav-link">Mis pedidos</button>
+            <button @click="alertaProximamente('Centro de ayuda')" class="nav-link">Ayuda</button>
+          </template>
 
-        <!-- 3. Perfil de Usuario y Salida -->
-        <div class="flex items-center gap-3">
-          <div class="hidden sm:flex flex-col text-right">
-            <span class="text-xs font-bold text-gray-800">{{ auth.usuario?.nombre || auth.user?.nombre || 'Usuario' }}</span>
-            <span class="text-[10px] font-extrabold bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full uppercase tracking-wider w-fit ml-auto mt-0.5">
+        </nav>
+        
+        <!-- Usuario, Salir y Contenedor del Carrito -->
+        <div class="flex items-center gap-4">
+          <!-- Etiqueta del Usuario -->
+          <div class="hidden sm:flex items-center gap-2 bg-[#F1F6F0] px-4 py-2 rounded-full text-sm font-bold">
+            <div class="w-6 h-6 bg-[#D2E4D5] rounded-full flex items-center justify-center text-[#234E35] text-xs">
+              {{ auth.usuario?.nombre?.charAt(0) || 'U' }}
+            </div>
+            Hola, {{ auth.usuario?.nombre?.split(' ')[0] || 'Usuario' }}
+            <span class="text-[10px] font-extrabold bg-[#234E35] text-white px-2 py-0.5 rounded-full uppercase ml-1">
               {{ auth.usuario?.rol || auth.user?.rol || 'Rol' }}
             </span>
           </div>
-          <div class="h-8 w-px bg-gray-200 hidden sm:block"></div>
-          <button @click="cerrarSesion" class="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-bold px-4 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5">
-            <span>Salir</span> 🚪
-          </button>
-        </div>
 
+          <!-- Botón Salir -->
+          <button @click="cerrarSesion" class="text-red-500 hover:text-white hover:bg-red-500 font-bold text-sm px-4 py-2 rounded-full transition-colors">
+            Salir
+          </button>
+
+          <!-- ESPACIO RESERVADO PARA EL CARRITO (Se llenará mágicamente desde Catalogo.vue) -->
+          <div id="carrito-slot"></div>
+        </div>
       </div>
     </header>
 
@@ -56,16 +76,32 @@ import { useRouter } from 'vue-router'
 const auth = useAuthStore()
 const router = useRouter()
 
-function cerrarSesion() {
+const cerrarSesion = () => {
   auth.logout()
   router.push('/login')
+}
+
+const irAlInicio = () => {
+  if (auth.esCliente) router.push('/catalogo')
+  else router.push('/dashboard')
+}
+
+const alertaProximamente = (seccion) => {
+  alert(`La sección "${seccion}" estará disponible próximamente.`)
 }
 </script>
 
 <style scoped>
+.nav-link {
+  color: #9ca3af; /* Gris claro por defecto */
+  transition: color 0.2s;
+}
+.nav-link:hover {
+  color: #234E35; /* Verde oscuro al pasar el mouse */
+}
 .router-link-active {
-  background-color: #ffffff !important;
-  color: #0d9488 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  color: #234E35 !important;
+  border-bottom: 2px solid #234E35;
+  padding-bottom: 4px;
 }
 </style>
