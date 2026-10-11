@@ -1,33 +1,31 @@
 <template>
   <div class="min-h-screen bg-gray-50 font-sans">
     
-    <!-- Barra de Navegación Superior -->
-    <header class="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
+    <!-- Barra de Navegación Superior (SOLO VISIBLE SI ESTÁ AUTENTICADO) -->
+    <header v-if="auth.estaAutenticado" class="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        <!-- 1. Logo y Nombre (Apegado totalmente a la Izquierda) -->
+        <!-- 1. Logo y Nombre -->
         <div class="flex items-center gap-3">
           <span class="bg-teal-600 text-white font-extrabold px-3 py-2 rounded-xl text-sm shadow-sm">DT</span>
           <span class="font-extrabold text-gray-800 text-xl tracking-tight">D'Todo</span>
         </div>
 
-
         <!-- Enlaces de Navegación por Rol -->
         <nav class="hidden md:flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
           
-          <!-- Enlaces de Administradores y Empleados -->
           <router-link v-if="auth.esAdministrador" to="/dashboard" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Panel Principal</router-link>
           <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/inventario" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Inventario</router-link>
           <router-link v-if="auth.esAdministrador || auth.esAlmacen" to="/pedidos" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Pedidos</router-link>
           <router-link v-if="auth.esAdministrador || auth.esVendedor" to="/ventas" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Ventas</router-link>
           <router-link v-if="auth.esAdministrador" to="/alertas" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Alertas</router-link>
           
-          <!-- NUEVO: Enlace exclusivo para el Cliente (y Admin para poder verlo) -->
+          <!-- Enlace exclusivo para el Cliente (y Admin para poder verlo) -->
           <router-link v-if="auth.esAdministrador || (auth.usuario?.rol || auth.user?.rol) === 'cliente'" to="/catalogo" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-white transition-all">Catálogo de Productos</router-link>
         
         </nav>
 
-        <!-- 3. Perfil de Usuario y Salida (Apegado totalmente a la Derecha) -->
+        <!-- 3. Perfil de Usuario y Salida -->
         <div class="flex items-center gap-3">
           <div class="hidden sm:flex flex-col text-right">
             <span class="text-xs font-bold text-gray-800">{{ auth.usuario?.nombre || auth.user?.nombre || 'Usuario' }}</span>
