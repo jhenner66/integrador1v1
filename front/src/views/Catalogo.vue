@@ -620,11 +620,11 @@
             <p class="text-sm font-extrabold mb-1">B001-000148 · {{ form.comprobante === 'boleta' ? 'DNI ' + form.dni : 'RUC ' + form.ruc }}</p>
             <p class="text-xs text-gray-500 mb-6">Consulta tu comprobante y guarda una copia de esta compra.</p>
             
-            <button class="w-full bg-[#234E35] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#1A3A27] transition mb-3 shadow-md">
+           <button @click="verBoleta" class="w-full bg-[#234E35] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#1A3A27] transition mb-3 shadow-md">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
               Ver boleta
             </button>
-            <button class="w-full bg-white border border-gray-200 text-[#234E35] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition">
+            <button @click="descargarPDF" class="w-full bg-white border border-gray-200 text-[#234E35] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               Descargar PDF
             </button>
@@ -756,4 +756,59 @@ const procesarCompra = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
   pasoActual.value = 3
 }
+// --- LÓGICA DE BOLETA Y PDF ---
+const numeroPedidoGenerado = ref('LE-2026-0148') // En el futuro, esto se llenará con el ID que te devuelva Laravel al comprar
+
+const verBoleta = () => {
+  // Truco temporal: Abre la ventana de impresión del navegador. 
+  // El cliente puede ver el resumen ahí mismo y darle a "Guardar como PDF".
+  window.print()
+}
+
+const descargarPDF = async () => {
+  // Muestra un mensaje temporal mientras programas tu backend
+  alert('Iniciando descarga... (Nota: En el futuro esto descargará el archivo generado por DOMPDF en Laravel)')
+  
+  /* 
+  =============================================================
+  CÓDIGO LISTO PARA CUANDO HAGAS TU API DE PDF EN LARAVEL:
+  Descomenta esto cuando tu backend esté listo para enviar PDFs.
+  =============================================================
+  try {
+    const response = await api.get(`/descargar-comprobante/${numeroPedidoGenerado.value}`, {
+      responseType: 'blob' // ¡Esto es vital para recibir archivos en Vue!
+    })
+    
+    // Crear una URL en la memoria del navegador para el PDF
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `Comprobante-${numeroPedidoGenerado.value}.pdf`)
+    document.body.appendChild(link)
+    
+    // Simular el clic para forzar la descarga
+    link.click()
+    
+    // Limpiar la memoria
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Error al descargar el PDF:', error)
+    alert('Hubo un problema al generar el documento.')
+  }
+  */
+}
 </script>
+<style scoped>
+/* Esta magia hace que cuando el cliente le de a "Ver boleta" (imprimir), 
+   se oculten los botones y solo se guarde la info útil como si fuera un PDF real */
+@media print {
+  button, header {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+</style>
