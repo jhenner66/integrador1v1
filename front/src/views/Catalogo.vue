@@ -745,28 +745,36 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue' 
+import { ref, computed, watch, onMounted } from 'vue' 
 import { useAuthStore } from '../stores/auth'
+import api from '../services/api' // <-- Importante: tu conexión con Laravel
 
 const auth = useAuthStore()
-
-// Control del flujo: 0 = Catálogo, 1 = Carrito, 2 = Checkout, 3 = Confirmación
 const pasoActual = ref(0) 
 
-// Datos simulados de Figma
-const categorias = ref(['Todos los productos', 'Frutas y verduras', 'Lácteos', 'Panadería', 'Abarrotes', 'Bebidas', 'Limpieza'])
+// 1. OBTENER PRODUCTOS REALES DESDE LARAVEL
+const productos = ref([])
+const categorias = ref(['Todos los productos'])
 const categoriaActiva = ref('Todos los productos')
 
-const productos = ref([
-  { id: 1, nombre: 'Leche fresca entera', presentacion: 'Botella · 1 L', categoria: 'Lácteos', precio: 5.50, imagen: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=200' },
-  { id: 2, nombre: 'Huevos de corral', presentacion: 'Bandeja · 12 unidades', categoria: 'Frescos', precio: 12.90, imagen: 'https://images.unsplash.com/photo-1587486913049-53fc88980cfc?auto=format&fit=crop&q=80&w=200' },
-  { id: 3, nombre: 'Pan integral artesanal', presentacion: 'Bolsa · 500 g', categoria: 'Panadería', precio: 3.50, imagen: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=200' },
-  { id: 4, nombre: 'Plátano de seda', presentacion: 'Porción · 1 kg', categoria: 'Frutas y verduras', precio: 4.90, imagen: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=80&w=200' },
-  { id: 5, nombre: 'Arroz extra', presentacion: 'Bolsa · 1 kg', categoria: 'Abarrotes', precio: 4.80, imagen: 'https://images.unsplash.com/photo-1586201375761-83865001e8ac?auto=format&fit=crop&q=80&w=200' },
-  { id: 6, nombre: 'Tomate fresco', presentacion: 'Porción · 1 kg', categoria: 'Frutas y verduras', precio: 4.20, imagen: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=200' },
-  { id: 7, nombre: 'Yogur natural', presentacion: 'Botella · 1 L', categoria: 'Lácteos', precio: 7.90, imagen: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&q=80&w=200' },
-  { id: 8, nombre: 'Agua sin gas', presentacion: 'Botella · 2.5 L', categoria: 'Bebidas', precio: 3.20, imagen: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4c?auto=format&fit=crop&q=80&w=200' }
-])
+const cargarProductos = async () => {
+  try {
+    // Llama a tu ProductoController en el backend
+    const { data } = await api.get('/productos')
+    productos.value = data.data || data
+    
+    // Extraer categorías únicas dinámicamente
+    const cats = [...new Set(productos.value.map(p => p.categoria))]
+    categorias.value = ['Todos los productos', ...cats]
+  } catch (error) {
+    console.error("Error al cargar productos desde la base de datos:", error)
+  }
+}
+
+// Ejecutar al entrar a la página
+onMounted(() => {
+  cargarProductos()
+})
 
 const productosFiltrados = computed(() => {
   if (categoriaActiva.value === 'Todos los productos') return productos.value
@@ -779,25 +787,18 @@ const carrito = ref([])
 const agregarAlCarrito = (producto) => {
   carrito.value.push({ ...producto, cantidad: 1 })
 }
-
 const aumentarCantidad = (id) => {
   const item = carrito.value.find(item => item.id === id)
   if (item) item.cantidad++
 }
-
 const disminuirCantidad = (id) => {
   const item = carrito.value.find(item => item.id === id)
-  if (item && item.cantidad > 1) {
-    item.cantidad--
-  } else {
-    eliminarDelCarrito(id)
-  }
+  if (item && item.cantidad > 1) item.cantidad--
+  else eliminarDelCarrito(id)
 }
-
 const eliminarDelCarrito = (id) => {
   carrito.value = carrito.value.filter(item => item.id !== id)
 }
-
 const obtenerCantidad = (id) => {
   const item = carrito.value.find(item => item.id === id)
   return item ? item.cantidad : 0
@@ -812,16 +813,15 @@ const irAlCarrito = () => {
 
 // --- Lógica de Dirección Global ---
 const direccionEntregaGlobal = ref('Av. Los Olivos 245, Pueblo Libre')
-
 const cambiarDireccionGlobal = () => {
   const nueva = prompt('Ingresa tu nueva dirección de entrega:', direccionEntregaGlobal.value)
   if (nueva && nueva.trim() !== '') {
     direccionEntregaGlobal.value = nueva
-    form.value.direccion = nueva // Actualiza el checkout automáticamente
+    form.value.direccion = nueva 
   }
 }
 
-// --- Lógica del Checkout (Se autocompleta con los datos de Pinia) ---
+// --- Formulario Checkout ---
 const form = ref({
   nombres: auth.usuario?.nombre || '',
   apellidos: auth.usuario?.apellidos || '',
@@ -838,8 +838,6 @@ const form = ref({
   razonSocial: ''
 })
 
-// Magia: Si el usuario actualiza sus datos en el modal de App.vue, 
-// el formulario de compra se actualizará automáticamente en tiempo real.
 watch(() => auth.usuario, (nuevo) => {
   if (nuevo) {
     form.value.nombres = nuevo.nombre || form.value.nombres
@@ -850,55 +848,52 @@ watch(() => auth.usuario, (nuevo) => {
   }
 }, { deep: true, immediate: true })
 
-const procesarCompra = () => {
-  // Simulando llamada a Laravel...
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-  pasoActual.value = 3
-}
 
-// --- LÓGICA DE BOLETA Y PDF ---
-const numeroPedidoGenerado = ref('LE-2026-0148')
+// 2. ENVIAR LA COMPRA A LARAVEL
+const cargandoCompra = ref(false)
+const numeroPedidoGenerado = ref('')
+const fechaActual = computed(() => new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }))
 
-// NUEVO: Calcular la fecha formal para la boleta impresa
-const fechaActual = computed(() => {
-  const opciones = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-  return new Date().toLocaleDateString('es-PE', opciones)
-})
-
-const verBoleta = () => {
-  // Truco: Abre la ventana de impresión del navegador que mostrará solo el ticket formal
-  window.print()
-}
-
-const descargarPDF = async () => {
-  alert('Iniciando descarga... (Nota: En el futuro esto descargará el archivo generado por DOMPDF en Laravel)')
-  
-  /* 
-  =============================================================
-  CÓDIGO LISTO PARA CUANDO HAGAS TU API DE PDF EN LARAVEL:
-  Descomenta esto cuando tu backend esté listo para enviar PDFs.
-  =============================================================
+const procesarCompra = async () => {
+  cargandoCompra.value = true
   try {
-    const response = await api.get(`/descargar-comprobante/${numeroPedidoGenerado.value}`, {
-      responseType: 'blob'
-    })
+    // Empaquetamos los datos como los espera tu base de datos
+    const payload = {
+      usuario_id: auth.usuario?.id, // ID del cliente
+      tipo_entrega: form.value.tipoEntrega,
+      metodo_pago: form.value.metodoPago,
+      tipo_comprobante: form.value.comprobante,
+      direccion_envio: form.value.direccion,
+      total: totalPrecio.value + (form.value.tipoEntrega === 'domicilio' ? 5 : 0),
+      // Mapeamos el carrito para la tabla detalle_pedidos o detalle_ventas
+      detalles: carrito.value.map(item => ({
+        producto_id: item.id,
+        cantidad: item.cantidad,
+        precio_unitario: item.precio,
+        subtotal: item.precio * item.cantidad
+      }))
+    }
+
+    // Llamamos a tu PedidoController o VentaController
+    const { data } = await api.post('/pedidos', payload)
+
+    // Capturamos el código devuelto por el backend
+    numeroPedidoGenerado.value = data.numero_pedido || `PE-${new Date().getTime()}`
     
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `Comprobante-${numeroPedidoGenerado.value}.pdf`)
-    document.body.appendChild(link)
-    
-    link.click()
-    
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    // Si la compra es exitosa, avanzamos a la confirmación
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    pasoActual.value = 3
+
   } catch (error) {
-    console.error('Error al descargar el PDF:', error)
-    alert('Hubo un problema al generar el documento.')
+    console.error("Error procesando la compra:", error)
+    alert("Hubo un problema al conectar con el servidor. " + (error.response?.data?.message || ''))
+  } finally {
+    cargandoCompra.value = false
   }
-  */
 }
+
+const verBoleta = () => window.print()
+const descargarPDF = async () => alert('El PDF será generado por dompdf en el backend.')
 </script>
 
 <style scoped>
