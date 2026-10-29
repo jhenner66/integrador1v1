@@ -1,24 +1,10 @@
 import { defineStore } from 'pinia'
 import api from '../services/api'
 
-// Lee el usuario guardado sin romper la app si el valor está dañado
-// (por ejemplo la cadena "undefined", que hace fallar JSON.parse y deja la pantalla en blanco)
-function leerUsuario() {
-  try {
-    const raw = localStorage.getItem('usuario')
-    if (!raw || raw === 'undefined') return null
-    return JSON.parse(raw)
-  } catch (e) {
-    localStorage.removeItem('usuario')
-    localStorage.removeItem('token')
-    return null
-  }
-}
-
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('token') || null,
-    usuario: leerUsuario()
+    usuario: JSON.parse(localStorage.getItem('usuario') || 'null') 
   }),
   getters: {
     estaAutenticado: (state) => !!state.token,

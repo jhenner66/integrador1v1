@@ -1,301 +1,214 @@
 <template>
-  <div class="ad-page">
-
+  <div class="min-h-screen bg-fondo p-4 md:p-8 font-sans">
+    
     <!-- Encabezado -->
-    <div class="ad-head">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
       <div>
-        <div class="ad-eyebrow"><Icon name="lock" style="width:12px;height:12px" /> Acceso: Administrador y Almacén</div>
-        <h1 class="ad-title">Inventario</h1>
-        <p class="ad-subtitle">Consulta productos, controla existencias y registra movimientos.</p>
+        <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Inventario de Productos</h1>
+        <p class="text-gray-500 mt-1">Gestiona tu catálogo, precios y niveles de stock</p>
       </div>
-      <div class="ad-actions">
-        <button class="ad-btn ad-btn-outline" @click="abrirReporte"><Icon name="history" /> Historial de movimientos</button>
-        <button class="ad-btn ad-btn-primary" @click="abrirModalNuevo"><Icon name="plus" /> Nuevo producto</button>
+      <div class="flex gap-3 w-full md:w-auto">
+        <!-- Nuevo Botón de Reporte -->
+        <button @click="abrirReporte" class="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all flex items-center gap-2">
+          📄 Historial
+        </button>
+        <button @click="abrirModalNuevo" class="bg-primario hover:bg-teal-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+          <span>+</span> Nuevo Producto
+        </button>
       </div>
     </div>
 
-    <!-- Resumen -->
-    <div class="ad-card flex items-center justify-between flex-wrap gap-3" style="padding: 14px 22px; margin-bottom: 18px; font-size: 13px">
-      <div class="flex items-center gap-6 flex-wrap">
-        <span>{{ productos.length }} productos registrados</span>
-        <span :class="criticos > 0 ? 'ad-danger-text' : 'ad-muted'" style="font-weight: 400">{{ criticos }} con stock crítico</span>
-        <span class="ad-muted">{{ categorias.length }} categorías</span>
+    <!-- Buscador y Filtros -->
+    <div class="bg-white p-4 rounded-t-2xl border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
+      <div class="w-full md:w-1/2 relative">
+        <input type="text" v-model="busqueda" placeholder="Buscar por código o nombre..." 
+          class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-700 bg-gray-50 focus:bg-white transition-all">
       </div>
-      <span class="ad-muted flex items-center gap-2" style="font-size: 12px">
-        <Icon name="cloud" style="width:14px;height:14px" /> Sincronizado · {{ horaSync }}
-      </span>
+      <div class="w-full md:w-auto flex gap-2">
+        <select v-model="categoriaFiltro" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none">
+          <option value="">Todas las Categorías</option>
+          <option v-for="cat in categorias" :key="cat.id_categoria" :value="cat.id_categoria">
+            {{ cat.nombre }}
+          </option>
+        </select>
+      </div>
     </div>
 
-    <!-- Catálogo de productos -->
-    <div class="ad-card" style="overflow: hidden">
-      <div style="padding: 20px 22px 16px">
-        <h2 class="ad-card-title">Catálogo de productos</h2>
-        <p class="ad-card-sub">Precios de venta en soles · stock en unidades</p>
-
-        <form class="flex gap-3 flex-wrap" style="margin-top: 16px" @submit.prevent="aplicarBusqueda">
-          <div class="ad-input-icon" style="flex: 1; min-width: 220px">
-            <Icon name="search" />
-            <input v-model="busqueda" type="text" class="ad-input" placeholder="Buscar por código o nombre" />
-          </div>
-          <select v-model="categoriaFiltro" class="ad-select" style="width: 220px">
-            <option value="">Todas las categorías</option>
-            <option v-for="cat in categorias" :key="cat.id_categoria" :value="cat.id_categoria">{{ cat.nombre }}</option>
-          </select>
-          <button type="submit" class="ad-btn ad-btn-outline">Buscar</button>
-        </form>
-      </div>
-
-      <div class="ad-table-wrap">
-        <table class="ad-table">
+    <!-- Tabla Principal Conectada -->
+    <div class="bg-white rounded-b-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
           <thead>
-            <tr>
-              <th>Código</th>
-              <th>Producto</th>
-              <th>Categoría</th>
-              <th>Precio</th>
-              <th>Stock</th>
-              <th>Acciones</th>
+            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <th class="p-4 font-semibold w-24">Código</th>
+              <th class="p-4 font-semibold">Producto</th>
+              <th class="p-4 font-semibold">Categoría</th>
+              <th class="p-4 font-semibold text-right">Precio Venta</th>
+              <th class="p-4 font-semibold text-center">Stock</th>
+              <th class="p-4 font-semibold text-center">Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
             <tr v-if="productosFiltrados.length === 0">
-              <td colspan="6" class="ad-empty">No se encontraron productos.</td>
+              <td colspan="6" class="p-8 text-center text-gray-500 font-medium">No se encontraron productos.</td>
             </tr>
-            <tr v-for="p in productosPagina" :key="p.id_producto">
-              <td class="ad-muted">{{ p.codigo }}</td>
-              <td class="ad-strong">{{ p.nombre }}</td>
-              <td>{{ obtenerNombreCategoria(p.id_categoria) }}</td>
-              <td>S/ {{ formatear(p.precio) }}</td>
-              <td>
-                <span :class="esCritico(p) ? 'ad-danger-text' : ''">{{ p.stock }} un.</span>
-                <span v-if="esCritico(p)" class="ad-badge danger" style="margin-left: 8px">
-                  {{ Number(p.stock) < Number(p.stock_minimo) ? 'Bajo mínimo' : 'En mínimo' }}
-                </span>
+            <tr v-for="p in productosFiltrados" :key="p.id_producto" class="hover:bg-gray-50 transition-colors">
+              <td class="p-4 font-medium text-gray-500">{{ p.codigo }}</td>
+              <td class="p-4 font-bold text-gray-900">{{ p.nombre }}</td>
+              <td class="p-4"><span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-semibold">{{ obtenerNombreCategoria(p.id_categoria) }}</span></td>
+              <td class="p-4 text-right font-bold text-gray-800">S/ {{ formatear(p.precio) }}</td>
+              <td class="p-4 text-center">
+                <span :class="p.stock <= p.stock_minimo ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'" class="px-3 py-1 rounded-full text-xs font-bold">{{ p.stock }}</span>
               </td>
-              <td style="white-space: nowrap">
-                <button class="ad-btn ad-btn-outline ad-btn-sm" title="Ajustar stock" @click="abrirModalMovimiento(p)">± Stock</button>
-                <button class="ad-link ok" style="margin-left: 8px" @click="editarProducto(p)">Editar</button>
-                <button class="ad-link danger" @click="borrarProducto(p.id_producto, p.nombre)">Borrar</button>
+              <td class="p-4 text-center">
+                <button @click="abrirModalMovimiento(p)" class="text-emerald-600 hover:text-emerald-800 font-bold px-2 transition-colors" title="Ajustar Stock">± Stock</button>
+                <button @click="editarProducto(p)" class="text-blue-500 hover:text-blue-700 font-bold px-2 transition-colors">Editar</button>
+                <!-- Botón Borrar Activado -->
+                <button @click="borrarProducto(p.id_producto, p.nombre)" class="text-red-500 hover:text-red-700 font-bold px-2 transition-colors">Borrar</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      <div class="ad-foot">
-        <span>Mostrando {{ productosPagina.length }} de {{ productosFiltrados.length }} productos</span>
-        <div class="ad-pager">
-          <button class="ad-btn ad-btn-outline ad-btn-sm" :disabled="pagina <= 1" @click="pagina--">Anterior</button>
-          <span class="cur">{{ pagina }}</span>
-          <button class="ad-btn ad-btn-outline ad-btn-sm" :disabled="pagina >= totalPaginas" @click="pagina++">Siguiente</button>
-        </div>
+      <div class="p-4 border-t border-gray-100 text-sm text-gray-500">
+        Mostrando <strong>{{ productosFiltrados.length }}</strong> productos en pantalla
       </div>
     </div>
 
-    <div class="ad-callout danger">
-      <Icon name="alert" /> Stock crítico: igual o inferior al mínimo configurado. La etiqueta complementa el color de alerta.
-    </div>
-
-    <!-- ============ MODAL: HISTORIAL DE MOVIMIENTOS ============ -->
-    <div v-if="modalReporte" class="ad-overlay" @click.self="modalReporte = false">
-      <div class="ad-modal wide">
-        <div class="ad-modal-head">
-          <div class="ad-modal-eyebrow">Inventario / Movimientos</div>
-          <h2 class="ad-modal-title">Historial de movimientos</h2>
-          <p class="ad-modal-sub">Trazabilidad de entradas y salidas del inventario.</p>
-          <button class="ad-modal-x" @click="modalReporte = false"><Icon name="x" /></button>
-        </div>
-
-        <div class="ad-modal-body">
-          <div class="flex gap-3 flex-wrap">
-            <select v-model="histProducto" class="ad-select" style="flex: 1; min-width: 200px">
-              <option value="">Todos los productos</option>
-              <option v-for="n in productosEnHistorial" :key="n" :value="n">{{ n }}</option>
-            </select>
-            <div class="flex items-center gap-2">
-              <input v-model="histDesde" type="date" class="ad-input" style="width: 150px" />
-              <span class="ad-muted">—</span>
-              <input v-model="histHasta" type="date" class="ad-input" style="width: 150px" />
-            </div>
-          </div>
-
-          <div class="ad-table-wrap" style="border: 1px solid var(--ad-border); border-radius: 10px">
-            <table class="ad-table">
-              <thead>
-                <tr>
-                  <th>Fecha y hora</th>
-                  <th>Producto</th>
-                  <th>Tipo</th>
-                  <th>Cantidad</th>
-                  <th>Motivo</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="historialFiltrado.length === 0">
-                  <td colspan="5" class="ad-empty">No hay movimientos registrados.</td>
-                </tr>
-                <tr v-for="h in historialFiltrado" :key="h.id_movimiento">
-                  <td style="white-space: nowrap">{{ formatearFecha(h.created_at) }}</td>
-                  <td>{{ nombreMovimiento(h) }}</td>
-                  <td><span class="ad-badge" :class="claseTipoMovimiento(h.tipo_movimiento)">{{ etiquetaTipo(h.tipo_movimiento) }}</span></td>
-                  <td style="white-space: nowrap">{{ cantidadConSigno(h) }}</td>
-                  <td>{{ h.motivo || 'Sin detalle' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="ad-muted" style="font-size: 12px">{{ historialFiltrado.length }} movimientos · Las cantidades indican unidades de producto.</p>
-        </div>
-
-        <div class="ad-modal-foot">
-          <span>Consulta de registros</span>
-          <div class="btns"><button class="ad-btn ad-btn-primary" @click="modalReporte = false">Cerrar</button></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ MODAL: NUEVO / EDITAR PRODUCTO ============ -->
-    <div v-if="modalProducto" class="ad-overlay" @click.self="modalProducto = false">
-      <form class="ad-modal" @submit.prevent="guardarProducto">
-        <div class="ad-modal-head">
-          <div class="ad-modal-eyebrow">Inventario / Ficha de producto</div>
-          <h2 class="ad-modal-title">{{ productoEditando.id_producto ? 'Editar producto' : 'Nuevo producto' }}</h2>
-          <p class="ad-modal-sub">
-            {{ productoEditando.id_producto ? 'Actualiza la ficha de ' + productoEditando.nombre + '.' : 'Completa la ficha para agregar un producto al inventario.' }}
-          </p>
-          <button type="button" class="ad-modal-x" @click="modalProducto = false"><Icon name="x" /></button>
-        </div>
-
-        <div class="ad-modal-body">
-          <div v-if="errorModal" class="ad-error">{{ errorModal }}</div>
-
+    <!-- MODAL: REPORTE DE HISTORIAL -->
+    <div v-if="modalReporte" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl w-full max-w-4xl shadow-xl flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
           <div>
-            <label class="ad-label">Nombre del producto *</label>
-            <input v-model="productoEditando.nombre" type="text" class="ad-input" required />
+            <h2 class="text-xl font-bold text-gray-800">Historial de Movimientos</h2>
+            <p class="text-sm text-gray-500 mt-1">Entradas, salidas, creaciones y eliminaciones recientes</p>
           </div>
-          <div class="ad-grid2">
+          <button @click="modalReporte = false" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+        </div>
+        
+        <div class="overflow-y-auto p-0 flex-1">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 bg-white shadow-sm">
+              <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                <th class="p-4 font-semibold">Fecha y Hora</th>
+                <th class="p-4 font-semibold">Producto</th>
+                <th class="p-4 font-semibold">Tipo</th>
+                <th class="p-4 font-semibold text-center">Cant.</th>
+                <th class="p-4 font-semibold">Motivo / Detalle</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
+              <tr v-if="historial.length === 0">
+                <td colspan="5" class="p-8 text-center text-gray-500">No hay movimientos registrados.</td>
+              </tr>
+              <tr v-for="h in historial" :key="h.id_movimiento" class="hover:bg-gray-50">
+                <td class="p-4 text-gray-500 font-medium">{{ formatearFecha(h.created_at) }}</td>
+                <td class="p-4 font-bold text-gray-800">{{ h.producto?.nombre || h.nombre_referencia || 'Producto Eliminado' }}</td>
+                <td class="p-4">
+                  <span :class="colorTipoMovimiento(h.tipo_movimiento)" class="px-3 py-1 rounded-full text-xs font-bold uppercase">
+                    {{ h.tipo_movimiento }}
+                  </span>
+                </td>
+                <td class="p-4 text-center font-bold">{{ h.cantidad || '-' }}</td>
+                <td class="p-4 text-gray-600">{{ h.motivo || 'Sin detalle' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl text-right">
+          <button @click="modalReporte = false" class="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-lg shadow-md">Cerrar Reporte</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALES DE PRODUCTO Y STOCK (se mantienen igual que antes, ocultos por brevedad visual pero funcionales en el código) -->
+    <div v-if="modalProducto" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">{{ productoEditando.id_producto ? 'Editar Producto' : 'Nuevo Producto' }}</h2>
+        <div v-if="errorModal" class="mb-4 text-red-600 text-sm font-semibold bg-red-50 p-3 rounded-lg">{{ errorModal }}</div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Nombre</label>
+            <input type="text" v-model="productoEditando.nombre" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="ad-label">Código *</label>
-              <input v-model="productoEditando.codigo" type="text" class="ad-input" required />
+              <label class="block text-sm font-medium text-gray-700">Código</label>
+              <input type="text" v-model="productoEditando.codigo" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
             </div>
             <div>
-              <label class="ad-label">Categoría *</label>
-              <select v-model="productoEditando.id_categoria" class="ad-select" required>
-                <option value="" disabled>Selecciona…</option>
+              <label class="block text-sm font-medium text-gray-700">Categoría</label>
+              <select v-model="productoEditando.id_categoria" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 bg-white">
                 <option v-for="cat in categorias" :key="cat.id_categoria" :value="cat.id_categoria">{{ cat.nombre }}</option>
               </select>
             </div>
           </div>
-          <div>
-            <label class="ad-label">Precio de venta (S/) *</label>
-            <input v-model.number="productoEditando.precio" type="number" step="0.01" min="0" class="ad-input" required />
-          </div>
-          <div class="ad-grid2">
+          <div class="grid grid-cols-3 gap-4">
             <div>
-              <label class="ad-label">{{ productoEditando.id_producto ? 'Stock actual *' : 'Stock inicial *' }}</label>
-              <input v-model.number="productoEditando.stock" type="number" min="0" class="ad-input" required />
+              <label class="block text-sm font-medium text-gray-700">Precio</label>
+              <input type="number" step="0.1" v-model="productoEditando.precio" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
             </div>
             <div>
-              <label class="ad-label">Stock mínimo *</label>
-              <input v-model.number="productoEditando.stock_minimo" type="number" min="0" class="ad-input" required />
+              <label class="block text-sm font-medium text-gray-700">Stock</label>
+              <input type="number" v-model="productoEditando.stock" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Mínimo</label>
+              <input type="number" v-model="productoEditando.stock_minimo" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none">
             </div>
           </div>
-          <div class="ad-note">
-            <Icon name="info" />
-            {{ productoEditando.id_producto ? 'Para registrar entradas o salidas con un motivo, utiliza ± Stock.' : 'Se mostrará una alerta cuando el stock sea igual o inferior al mínimo.' }}
-          </div>
         </div>
-
-        <div class="ad-modal-foot">
-          <span>Los campos marcados con * son obligatorios</span>
-          <div class="btns">
-            <button type="button" class="ad-btn ad-btn-outline" @click="modalProducto = false">Cancelar</button>
-            <button type="submit" class="ad-btn ad-btn-primary">{{ productoEditando.id_producto ? 'Guardar cambios' : 'Crear producto' }}</button>
-          </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button @click="modalProducto = false" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold rounded-lg">Cancelar</button>
+          <button @click="guardarProducto" class="px-4 py-2 bg-primario hover:bg-teal-700 text-white font-bold rounded-lg shadow-md">Guardar</button>
         </div>
-      </form>
+      </div>
     </div>
 
-    <!-- ============ MODAL: AJUSTAR STOCK ============ -->
-    <div v-if="modalMovimiento" class="ad-overlay" @click.self="modalMovimiento = false">
-      <form class="ad-modal" @submit.prevent="guardarMovimiento">
-        <div class="ad-modal-head">
-          <div class="ad-modal-eyebrow">Inventario / Ajuste</div>
-          <h2 class="ad-modal-title">Ajustar stock</h2>
-          <p class="ad-modal-sub">Registra un movimiento manual y su motivo.</p>
-          <button type="button" class="ad-modal-x" @click="modalMovimiento = false"><Icon name="x" /></button>
-        </div>
-
-        <div class="ad-modal-body">
-          <div v-if="errorModal" class="ad-error">{{ errorModal }}</div>
-
-          <div class="ad-panel flex items-center justify-between gap-3">
-            <div>
-              <div class="ad-strong" style="font-size: 14px">{{ productoMovimiento?.nombre }}</div>
-              <div class="ad-muted" style="font-size: 12px; margin-top: 4px">{{ productoMovimiento?.codigo }} · {{ obtenerNombreCategoria(productoMovimiento?.id_categoria) }}</div>
-            </div>
-            <span class="ad-badge" :class="productoMovimiento && esCritico(productoMovimiento) ? 'danger' : 'neutral'">
-              Stock actual: {{ productoMovimiento?.stock }} un.
-            </span>
-          </div>
-
+    <div v-if="modalMovimiento" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+        <h2 class="text-xl font-bold text-gray-800 mb-2">Ajustar Stock</h2>
+        <p class="text-sm text-gray-500 mb-4">{{ productoMovimiento.nombre }} (Stock actual: {{ productoMovimiento.stock }})</p>
+        <div v-if="errorModal" class="mb-4 text-red-600 text-sm font-semibold bg-red-50 p-3 rounded-lg">{{ errorModal }}</div>
+        <div class="space-y-4">
           <div>
-            <label class="ad-label">Tipo de movimiento *</label>
-            <div class="ad-seg" style="grid-template-columns: 1fr 1fr">
-              <button type="button" :class="{ on: movimiento.tipo_movimiento === 'entrada' }" @click="movimiento.tipo_movimiento = 'entrada'">Entrada</button>
-              <button type="button" :class="{ on: movimiento.tipo_movimiento === 'salida' }" @click="movimiento.tipo_movimiento = 'salida'">Salida</button>
-            </div>
+            <label class="block text-sm font-medium text-gray-700">Tipo de movimiento</label>
+            <select v-model="movimiento.tipo_movimiento" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 bg-white">
+              <option value="entrada">Entrada (+)</option>
+              <option value="salida">Salida (-)</option>
+            </select>
           </div>
           <div>
-            <label class="ad-label">Cantidad *</label>
-            <input v-model.number="movimiento.cantidad" type="number" min="1" class="ad-input" required />
+            <label class="block text-sm font-medium text-gray-700">Cantidad</label>
+            <input type="number" min="1" v-model="movimiento.cantidad" class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
           </div>
           <div>
-            <label class="ad-label">Motivo *</label>
-            <input v-model="movimiento.motivo" type="text" class="ad-input" placeholder="Ej: Compra, Merma…" required />
-          </div>
-
-          <div class="ad-panel info flex items-center justify-between gap-3" style="font-size: 13px">
-            <span>
-              {{ productoMovimiento?.stock }} actuales
-              {{ movimiento.tipo_movimiento === 'entrada' ? '+' : '−' }}
-              {{ Number(movimiento.cantidad) || 0 }} de {{ movimiento.tipo_movimiento }}
-            </span>
-            <strong style="font-size: 15px">Nuevo stock: {{ nuevoStock }} un.</strong>
-          </div>
-          <p class="ad-muted" style="font-size: 12px">El movimiento quedará asociado a {{ auth.usuario?.nombre || 'tu usuario' }} en el historial.</p>
-        </div>
-
-        <div class="ad-modal-foot">
-          <span>Los campos marcados con * son obligatorios</span>
-          <div class="btns">
-            <button type="button" class="ad-btn ad-btn-outline" @click="modalMovimiento = false">Cancelar</button>
-            <button type="submit" class="ad-btn ad-btn-primary">Guardar ajuste</button>
+            <label class="block text-sm font-medium text-gray-700">Motivo</label>
+            <input type="text" v-model="movimiento.motivo" placeholder="Ej: Compra, Merma..." class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
           </div>
         </div>
-      </form>
+        <div class="mt-6 flex justify-end gap-3">
+          <button @click="modalMovimiento = false" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold rounded-lg">Cancelar</button>
+          <button @click="guardarMovimiento" class="px-4 py-2 bg-primario hover:bg-teal-700 text-white font-bold rounded-lg shadow-md">Confirmar</button>
+        </div>
+      </div>
     </div>
 
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import Icon from '../components/Icon.vue'
 
 const auth = useAuthStore()
 
-// Variables reactivas
+// Variables Reactivas
 const productos = ref([])
 const categorias = ref([])
 const busqueda = ref('')
-const terminoAplicado = ref('')
 const categoriaFiltro = ref('')
-const pagina = ref(1)
-const POR_PAGINA = 8
-const horaSync = ref('--:--')
 
 const modalProducto = ref(false)
 const productoEditando = ref({})
@@ -305,28 +218,30 @@ const modalMovimiento = ref(false)
 const productoMovimiento = ref(null)
 const movimiento = ref({ tipo_movimiento: 'entrada', cantidad: 1, motivo: '' })
 
-// Historial
+// Variables del Nuevo Reporte
 const modalReporte = ref(false)
 const historial = ref([])
-const histProducto = ref('')
-const histDesde = ref('')
-const histHasta = ref('')
 
-// ---------- Utilidades ----------
+// Utilidades
 function formatear(valor) {
   return Number(valor || 0).toFixed(2)
 }
 
 function formatearFecha(fechaString) {
-  if (!fechaString) return '-'
-  const f = new Date(fechaString)
-  const dia = f.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '')
-  const hora = f.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
-  return `${dia} · ${hora}`
+  if (!fechaString) return '-';
+  const fecha = new Date(fechaString);
+  return fecha.toLocaleString('es-PE', { 
+    year: 'numeric', month: 'short', day: 'numeric', 
+    hour: '2-digit', minute: '2-digit', hour12: true 
+  });
 }
 
-function esCritico(p) {
-  return Number(p.stock) <= Number(p.stock_minimo)
+function colorTipoMovimiento(tipo) {
+  const t = tipo.toLowerCase();
+  if (t === 'entrada' || t === 'creacion' || t === 'creación') return 'bg-emerald-100 text-emerald-700';
+  if (t === 'salida') return 'bg-amber-100 text-amber-700';
+  if (t === 'eliminacion' || t === 'eliminación') return 'bg-red-100 text-red-700';
+  return 'bg-gray-100 text-gray-700';
 }
 
 function obtenerNombreCategoria(id) {
@@ -334,46 +249,29 @@ function obtenerNombreCategoria(id) {
   return cat ? cat.nombre : 'Sin categoría'
 }
 
-const criticos = computed(() => productos.value.filter(esCritico).length)
-
-// ---------- Tabla: filtro + paginación ----------
-function aplicarBusqueda() {
-  terminoAplicado.value = busqueda.value
-  pagina.value = 1
-}
-watch(busqueda, (v) => { if (v === '') aplicarBusqueda() })
-watch(categoriaFiltro, () => { pagina.value = 1 })
-
-const productosFiltrados = computed(() => {
-  const t = terminoAplicado.value.toLowerCase()
-  return productos.value.filter(p => {
-    const coincideTexto = (p.nombre || '').toLowerCase().includes(t) || (p.codigo && p.codigo.toLowerCase().includes(t))
-    const coincideCategoria = categoriaFiltro.value === '' || p.id_categoria === categoriaFiltro.value
-    return coincideTexto && coincideCategoria
-  })
-})
-
-const totalPaginas = computed(() => Math.max(1, Math.ceil(productosFiltrados.value.length / POR_PAGINA)))
-const productosPagina = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA
-  return productosFiltrados.value.slice(ini, ini + POR_PAGINA)
-})
-
-// ---------- Carga de datos ----------
+// Cargas de Datos
 async function cargarDatos() {
   try {
     const resCat = await api.get('/categorias')
     categorias.value = resCat.data
     const resProd = await api.get('/productos')
     productos.value = resProd.data.data ?? resProd.data
-    horaSync.value = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
-    if (pagina.value > totalPaginas.value) pagina.value = totalPaginas.value
   } catch (error) {
-    console.error('Error cargando inventario:', error)
+    console.error("Error cargando inventario:", error)
   }
 }
 
-// ---------- Producto: nuevo, editar, borrar ----------
+// Filtro en Tiempo Real
+const productosFiltrados = computed(() => {
+  return productos.value.filter(p => {
+    const coincideTexto = p.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) || 
+                          (p.codigo && p.codigo.toLowerCase().includes(busqueda.value.toLowerCase()))
+    const coincideCategoria = categoriaFiltro.value === '' || p.id_categoria === categoriaFiltro.value
+    return coincideTexto && coincideCategoria
+  })
+})
+
+// Acciones de Productos (Nuevo, Editar, Borrar)
 function abrirModalNuevo() {
   productoEditando.value = { id_categoria: '', codigo: '', codigo_barras: '', nombre: '', precio: 0, stock: 0, stock_minimo: 5 }
   errorModal.value = ''
@@ -401,23 +299,28 @@ async function guardarProducto() {
   }
 }
 
+// NUEVO: Lógica para Borrar Producto
 async function borrarProducto(id, nombre) {
+  console.log("Intentando borrar producto con ID:", id);
+  
   if (!id) {
-    alert('Error: El ID del producto no es válido.')
-    return
+    alert("Error: El ID del producto no es válido.");
+    return;
   }
-  if (!confirm(`¿Dar de baja el producto "${nombre}"?`)) return
 
   try {
-    await api.delete(`/productos/${id}`)
-    cargarDatos()
+    console.log(`Enviando petición DELETE a /productos/${id}`);
+    const res = await api.delete(`/productos/${id}`);
+    console.log("Respuesta exitosa del servidor:", res.data);
+    alert("¡Producto dado de baja correctamente!");
+    cargarDatos(); // Recarga la tabla
   } catch (e) {
-    console.error('Error detallado al eliminar:', e)
-    alert(e.response?.data?.message || 'Error al eliminar el producto. Revisa la consola.')
+    console.error("Error detallado al eliminar:", e);
+    alert(e.response?.data?.message || 'Error al eliminar el producto. Revisa la consola.');
   }
 }
 
-// ---------- Ajuste de stock ----------
+// Acciones de Movimientos de Stock
 function abrirModalMovimiento(p) {
   productoMovimiento.value = p
   movimiento.value = { tipo_movimiento: 'entrada', cantidad: 1, motivo: '' }
@@ -425,24 +328,14 @@ function abrirModalMovimiento(p) {
   modalMovimiento.value = true
 }
 
-const nuevoStock = computed(() => {
-  const actual = Number(productoMovimiento.value?.stock || 0)
-  const cant = Number(movimiento.value.cantidad) || 0
-  return movimiento.value.tipo_movimiento === 'entrada' ? actual + cant : actual - cant
-})
-
 async function guardarMovimiento() {
   errorModal.value = ''
-  if (nuevoStock.value < 0) {
-    errorModal.value = 'La salida supera el stock disponible.'
-    return
-  }
   try {
     const payload = {
       tipo_movimiento: movimiento.value.tipo_movimiento,
       cantidad: parseInt(movimiento.value.cantidad),
       motivo: movimiento.value.motivo,
-      id_usuario: auth.usuario?.id_usuario || auth.user?.id_usuario || 1,
+      id_usuario: auth.usuario?.id_usuario || auth.user?.id_usuario || 1 
     }
     await api.post(`/productos/${productoMovimiento.value.id_producto}/movimiento`, payload)
     modalMovimiento.value = false
@@ -452,59 +345,16 @@ async function guardarMovimiento() {
   }
 }
 
-// ---------- Historial de movimientos ----------
-function nombreMovimiento(h) {
-  return h.producto?.nombre || h.nombre_referencia || 'Producto eliminado'
-}
-
-function etiquetaTipo(tipo) {
-  const t = (tipo || '').toLowerCase()
-  return t.charAt(0).toUpperCase() + t.slice(1)
-}
-
-function claseTipoMovimiento(tipo) {
-  const t = (tipo || '').toLowerCase()
-  if (t === 'entrada' || t === 'creacion' || t === 'creación') return 'info'
-  if (t === 'salida') return 'warn'
-  if (t === 'eliminacion' || t === 'eliminación') return 'danger'
-  return 'neutral'
-}
-
-function cantidadConSigno(h) {
-  if (h.cantidad === null || h.cantidad === undefined || h.cantidad === '') return '-'
-  const n = Math.abs(Number(h.cantidad))
-  const t = (h.tipo_movimiento || '').toLowerCase()
-  if (t === 'salida') return `−${n} un.`
-  if (t === 'entrada') return `+${n} un.`
-  return `${n} un.`
-}
-
-const productosEnHistorial = computed(() => {
-  const nombres = new Set(historial.value.map(nombreMovimiento))
-  return [...nombres].sort((a, b) => a.localeCompare(b))
-})
-
-const historialFiltrado = computed(() => {
-  return historial.value.filter(h => {
-    if (histProducto.value && nombreMovimiento(h) !== histProducto.value) return false
-    const dia = String(h.created_at || '').slice(0, 10)
-    if (histDesde.value && dia && dia < histDesde.value) return false
-    if (histHasta.value && dia && dia > histHasta.value) return false
-    return true
-  })
-})
-
+// NUEVO: Lógica del Reporte
 async function abrirReporte() {
   try {
+    // Intentamos cargar el historial desde el backend
     const { data } = await api.get('/movimientos')
     historial.value = data.data || data
-    histProducto.value = ''
-    histDesde.value = ''
-    histHasta.value = ''
     modalReporte.value = true
   } catch (error) {
-    console.error('Error al cargar historial:', error)
-    alert("No se pudo cargar el historial. Asegúrate de que el endpoint '/movimientos' exista en tu backend de Laravel.")
+    console.error("Error al cargar historial:", error)
+    alert("No se pudo cargar el historial. Asegúrate de que el endpoint '/movimientos' exista en tu backend de Laravel.");
   }
 }
 

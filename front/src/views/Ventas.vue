@@ -1,286 +1,202 @@
 <template>
-  <div class="ad-page">
-
+  <div class="min-h-screen bg-fondo p-4 md:p-8 font-sans">
+    
     <!-- Encabezado -->
-    <div class="ad-head">
-      <div>
-        <div class="ad-eyebrow"><Icon name="lock" style="width:12px;height:12px" /> Acceso: Administrador y Vendedor</div>
-        <h1 class="ad-title">Ventas y POS</h1>
-        <p class="ad-subtitle">Registra una venta o consulta la recaudación de tu tienda.</p>
-      </div>
-      <span class="ad-badge neutral" style="font-size: 11px; padding: 6px 10px">Caja principal · {{ auth.usuario?.nombre || 'Usuario' }}</span>
+    <div class="mb-8">
+      <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Gestión de Ventas & POS</h1>
+      <p class="text-gray-500 mt-1">Registra transacciones, métodos de pago y emite comprobantes oficiales</p>
     </div>
 
-    <div class="ventas-grid">
+    <!-- SECCIÓN: REGISTRAR VENTA -->
+    <div v-if="auth.esAdministrador || auth.esVendedor" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Registrar Nueva Venta</h2>
+      
+      <!-- Líneas de Productos -->
+      <div class="space-y-3 mb-4">
+        <div v-for="(d, idx) in nuevaVenta.detalles" :key="idx" class="flex flex-col md:flex-row gap-3 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+          <select v-model="d.id_producto" required class="w-full md:flex-2 p-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-teal-500">
+            <option value="" disabled>Seleccione producto</option>
+            <option v-for="p in productos" :key="p.id_producto" :value="p.id_producto">
+              {{ p.nombre }} (Stock: {{ p.stock }}) — S/ {{ Number(p.precio).toFixed(2) }}
+            </option>
+          </select>
+          <input v-model.number="d.cantidad" type="number" min="1" placeholder="Cantidad" class="w-full md:w-32 p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500" required />
+          <button type="button" @click="nuevaVenta.detalles.splice(idx,1)" class="text-red-500 hover:text-red-700 font-bold px-3 py-2">✕</button>
+        </div>
+      </div>
 
-      <!-- ============ REGISTRAR NUEVA VENTA ============ -->
-      <section v-if="auth.esAdministrador || auth.esVendedor" class="ad-card" style="overflow: hidden">
-        <div class="flex items-start justify-between gap-3" style="padding: 20px 22px 14px">
-          <div>
-            <h2 class="ad-card-title">Registrar nueva venta</h2>
-            <p class="ad-card-sub">Venta en preparación · precios finales en soles</p>
-          </div>
-          <span class="ad-badge warn">Sin registrar</span>
+      <div class="flex justify-between items-center mb-6">
+        <button type="button" @click="nuevaVenta.detalles.push({ id_producto: '', cantidad: 1 })" class="text-sm font-bold text-primario hover:text-teal-700 flex items-center gap-1">
+          + Agregar otro producto
+        </button>
+        <div class="text-right">
+          <span class="text-sm text-gray-500 mr-2">Total a Pagar:</span>
+          <span class="text-2xl font-black text-gray-800">S/ {{ calcularTotalVenta.toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <!-- DATOS DE COMPROBANTE Y CLIENTE -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Comprobante</label>
+          <select v-model="nuevaVenta.tipo_comprobante" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-teal-500">
+            <option value="boleta">Boleta de Venta</option>
+            <option value="factura">Factura</option>
+          </select>
         </div>
 
-        <div style="padding: 0 22px 22px; display: flex; flex-direction: column; gap: 16px">
-
-          <!-- Buscador de producto -->
-          <div style="position: relative">
-            <form class="flex gap-3" @submit.prevent="anadirDesdeBusqueda">
-              <div class="ad-input-icon" style="flex: 1">
-                <Icon name="search" />
-                <input v-model="busquedaProducto" type="text" class="ad-input" placeholder="Código o nombre del producto" autocomplete="off" />
-              </div>
-              <button type="submit" class="ad-btn ad-btn-outline"><Icon name="plus" /> Añadir</button>
-            </form>
-            <div v-if="busquedaProducto.trim() && sugerencias.length" class="sugerencias">
-              <button v-for="p in sugerencias" :key="p.id_producto" type="button" @click="anadirProducto(p)">
-                <span><strong>{{ p.nombre }}</strong> <span class="ad-muted">· {{ p.codigo }}</span></span>
-                <span class="ad-muted">S/ {{ Number(p.precio).toFixed(2) }} · {{ p.stock }} un.</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Líneas de la venta -->
-          <div class="ad-table-wrap" style="border: 1px solid var(--ad-border); border-radius: 10px">
-            <table class="ad-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Precio</th>
-                  <th>Cant.</th>
-                  <th>Importe</th>
-                  <th style="width: 30px"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="lineas.length === 0">
-                  <td colspan="5" class="ad-empty" style="padding: 24px">Busca un producto para empezar la venta.</td>
-                </tr>
-                <tr v-for="l in lineas" :key="l.producto.id_producto">
-                  <td class="ad-strong">{{ l.producto.nombre }}</td>
-                  <td>S/ {{ Number(l.producto.precio).toFixed(2) }}</td>
-                  <td>
-                    <div class="stepper">
-                      <button type="button" @click="cambiarCantidad(l, -1)">−</button>
-                      <span>{{ l.cantidad }}</span>
-                      <button type="button" @click="cambiarCantidad(l, 1)">+</button>
-                    </div>
-                  </td>
-                  <td>S/ {{ (Number(l.producto.precio) * l.cantidad).toFixed(2) }}</td>
-                  <td><button type="button" class="ad-muted" style="background:none;border:0;cursor:pointer;font-size:16px" title="Quitar" @click="quitarLinea(l)">×</button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Comprobante -->
-          <div>
-            <label class="ad-label">Comprobante</label>
-            <div class="ad-seg" style="grid-template-columns: 1fr 1fr">
-              <button type="button" :class="{ on: nuevaVenta.tipo_comprobante === 'boleta' }" @click="nuevaVenta.tipo_comprobante = 'boleta'">Boleta</button>
-              <button type="button" :class="{ on: nuevaVenta.tipo_comprobante === 'factura' }" @click="nuevaVenta.tipo_comprobante = 'factura'">Factura</button>
-            </div>
-          </div>
-
-          <div v-if="nuevaVenta.tipo_comprobante === 'boleta'" class="ad-grid2" style="grid-template-columns: 1fr 1.6fr">
-            <div>
-              <label class="ad-label">DNI</label>
-              <input v-model="nuevaVenta.dni_ruc" type="text" maxlength="8" class="ad-input" placeholder="Ej: 72839210" />
-            </div>
-            <div>
-              <label class="ad-label">Nombre</label>
-              <input v-model="nuevaVenta.nombre_cliente" type="text" class="ad-input" placeholder="Ej: Juan Pérez" />
-            </div>
-          </div>
-          <div v-else class="ad-grid2" style="grid-template-columns: 1fr 1.6fr">
-            <div>
-              <label class="ad-label">RUC *</label>
-              <input v-model="nuevaVenta.dni_ruc" type="text" maxlength="11" class="ad-input" placeholder="Ej: 20601234568" />
-            </div>
-            <div>
-              <label class="ad-label">Razón social *</label>
-              <input v-model="nuevaVenta.razon_social" type="text" class="ad-input" placeholder="Ej: Minimarket SAC" />
-            </div>
-          </div>
-
-          <!-- Método de pago -->
-          <div>
-            <label class="ad-label">Método de pago</label>
-            <div class="ad-seg" style="grid-template-columns: repeat(3, 1fr)">
-              <button type="button" :class="{ on: nuevaVenta.metodo_pago === 'efectivo' }" @click="nuevaVenta.metodo_pago = 'efectivo'">Efectivo</button>
-              <button type="button" :class="{ on: nuevaVenta.metodo_pago === 'tarjeta' }" @click="nuevaVenta.metodo_pago = 'tarjeta'">Tarjeta</button>
-              <button type="button" :class="{ on: nuevaVenta.metodo_pago === 'billetera' }" @click="nuevaVenta.metodo_pago = 'billetera'">Billetera</button>
-            </div>
-          </div>
-
-          <div v-if="nuevaVenta.metodo_pago === 'efectivo'" class="ad-grid2" style="grid-template-columns: 1fr 1fr; align-items: end">
-            <div>
-              <label class="ad-label">Importe recibido (S/) *</label>
-              <input v-model.number="nuevaVenta.monto_efectivo" type="number" step="0.1" min="0" class="ad-input" placeholder="Ej: 50.00" />
-            </div>
-            <div class="ad-panel info" style="padding: 8px 14px">
-              <div style="font-size: 11px">Vuelto a entregar</div>
-              <div style="font-size: 18px; font-weight: 600">S/ {{ calcularVuelto.toFixed(2) }}</div>
-            </div>
-          </div>
-
-          <!-- Totales -->
-          <div class="ad-panel flex items-center justify-between gap-3 flex-wrap">
-            <div class="ad-muted" style="font-size: 12px; line-height: 1.6">
-              {{ lineas.length }} {{ lineas.length === 1 ? 'producto' : 'productos' }} · {{ totalUnidades }} unidades<br />
-              Base: S/ {{ baseImponible.toFixed(2) }} · IGV (18%): S/ {{ igv.toFixed(2) }}
-            </div>
-            <div style="text-align: right">
-              <div class="ad-muted" style="font-size: 10.5px; letter-spacing: .05em">TOTAL A COBRAR</div>
-              <div style="font-size: 26px; font-weight: 600">S/ {{ calcularTotalVenta.toFixed(2) }}</div>
-            </div>
-          </div>
-
-          <div v-if="errorVenta" class="ad-error">{{ errorVenta }}</div>
-          <div v-if="mensajeVenta" class="ad-badge ok" style="padding: 10px 14px; font-size: 12px">{{ mensajeVenta }}</div>
-
-          <div style="display: flex; justify-content: flex-end">
-            <button type="button" class="ad-btn ad-btn-primary ad-btn-lg" :disabled="registrando" @click="registrarYImprimirVenta">
-              <Icon name="printer" /> Registrar e imprimir comprobante
-            </button>
-          </div>
+        <!-- DNI o RUC -->
+        <div v-if="nuevaVenta.tipo_comprobante === 'boleta'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">DNI del Cliente</label>
+          <input v-model="nuevaVenta.dni_ruc" type="text" maxlength="8" placeholder="Ej: 72839210" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
         </div>
-      </section>
-
-      <!-- ============ REPORTE DE VENTAS ============ -->
-      <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
-        <section class="ad-card" style="overflow: hidden">
-          <div style="padding: 20px 22px 14px">
-            <h2 class="ad-card-title">Reporte de ventas</h2>
-            <p class="ad-card-sub">Recaudación agrupada por día</p>
-
-            <div class="ad-grid2" style="margin-top: 14px">
-              <div>
-                <label class="ad-label">Desde</label>
-                <input v-model="fechaInicio" type="date" class="ad-input" />
-              </div>
-              <div>
-                <label class="ad-label">Hasta</label>
-                <input v-model="fechaFin" type="date" class="ad-input" />
-              </div>
-            </div>
-            <div class="flex items-center justify-between" style="margin-top: 12px">
-              <span class="ad-muted" style="font-size: 12px">{{ diasSeleccionados }} {{ diasSeleccionados === 1 ? 'día seleccionado' : 'días seleccionados' }}</span>
-              <button class="ad-btn ad-btn-primary ad-btn-sm" @click="cargarReporte"><Icon name="filter" /> Filtrar</button>
-            </div>
-          </div>
-
-          <div class="ad-panel info flex items-center justify-between" style="border-radius: 0; padding: 14px 22px">
-            <div>
-              <div style="font-size: 10.5px; letter-spacing: .05em">TOTAL RECAUDADO</div>
-              <div style="font-size: 24px; font-weight: 600">S/ {{ formatearMiles(reporte.total_general) }}</div>
-            </div>
-            <div style="text-align: right">
-              <div style="font-size: 10.5px; letter-spacing: .05em">VENTAS</div>
-              <div style="font-size: 24px; font-weight: 600">{{ totalVentas }}</div>
-            </div>
-          </div>
-
-          <div v-if="ventasPorDiaDesc.length" class="ad-table-wrap">
-            <table class="ad-table">
-              <thead>
-                <tr>
-                  <th>Día</th>
-                  <th>N.º ventas</th>
-                  <th>Total recaudado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="v in ventasPorDiaDesc" :key="v.dia">
-                  <td>{{ etiquetaDia(v.dia) }}</td>
-                  <td>{{ v.num_ventas }}</td>
-                  <td class="ad-strong">S/ {{ formatearMiles(v.total) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="ad-empty">No hay ventas registradas en el rango seleccionado.</div>
-
-          <div style="padding: 14px 22px 18px; border-top: 1px solid var(--ad-border)">
-            <div class="flex gap-3 flex-wrap">
-              <button class="ad-btn ad-btn-outline ad-btn-sm" @click="abrirModalComprobantes"><Icon name="file" /> Ver comprobantes</button>
-              <button class="ad-btn ad-btn-outline ad-btn-sm" @click="exportarExcel"><Icon name="download" /> Exportar CSV</button>
-            </div>
-            <p class="ad-muted" style="font-size: 11px; margin-top: 12px; line-height: 1.5">
-              El reporte incluye ventas registradas. La venta en preparación aún no forma parte de estos totales.
-            </p>
-          </div>
-        </section>
-
-        <div class="ad-callout" style="margin-top: 0; background: #fff; border: 1px solid var(--ad-border)">
-          <Icon name="info" /> Verifica el documento del cliente y el importe recibido antes de registrar la venta.
+        <div v-else>
+          <label class="block text-sm font-medium text-gray-700 mb-1">RUC de la Empresa</label>
+          <input v-model="nuevaVenta.dni_ruc" type="text" maxlength="11" placeholder="Ej: 20601234568" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
         </div>
+
+        <!-- Nombre del Cliente (Solo Boleta) -->
+        <div v-if="nuevaVenta.tipo_comprobante === 'boleta'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Cliente</label>
+          <input v-model="nuevaVenta.nombre_cliente" type="text" placeholder="Ej: Juan Pérez" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
+        </div>
+
+        <!-- Razón Social (Solo Factura) -->
+        <div v-if="nuevaVenta.tipo_comprobante === 'factura'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
+          <input v-model="nuevaVenta.razon_social" type="text" placeholder="Ej: Minimarket SAC" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
+        </div>
+
+        <!-- Método de Pago -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
+          <select v-model="nuevaVenta.metodo_pago" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-teal-500">
+            <option value="efectivo">Efectivo 💵</option>
+            <option value="tarjeta">Tarjeta 💳</option>
+            <option value="billetera">Billetera Digital 📱</option>
+          </select>
+        </div>
+
+        <!-- Efectivo con el que paga -->
+        <div v-if="nuevaVenta.metodo_pago === 'efectivo'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Paga con (S/)</label>
+          <input v-model.number="nuevaVenta.monto_efectivo" type="number" step="0.1" placeholder="Ej: 50.00" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500" />
+        </div>
+
+      </div>
+
+      <div v-if="nuevaVenta.metodo_pago === 'efectivo' && nuevaVenta.monto_efectivo > 0" class="mb-4 p-3 bg-teal-50 border border-teal-100 rounded-lg flex justify-between items-center text-teal-800 font-semibold text-sm">
+        <span>Cálculo de Vuelto:</span>
+        <span class="text-lg">S/ {{ calcularVuelto.toFixed(2) }}</span>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
+        <div>
+          <p v-if="errorVenta" class="text-red-600 text-sm font-semibold bg-red-50 p-3 rounded-lg">{{ errorVenta }}</p>
+          <p v-if="mensajeVenta" class="text-emerald-700 text-sm font-bold bg-emerald-50 p-3 rounded-lg">{{ mensajeVenta }}</p>
+        </div>
+        <button @click="registrarYImprimirVenta" class="w-full sm:w-auto bg-primario hover:bg-teal-700 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5">
+          Registrar e Imprimir Comprobante 🖨️
+        </button>
       </div>
     </div>
 
-    <!-- ============ MODAL: COMPROBANTES EMITIDOS ============ -->
-    <div v-if="modalComprobantes" class="ad-overlay" @click.self="modalComprobantes = false">
-      <div class="ad-modal wide">
-        <div class="ad-modal-head">
-          <div class="ad-modal-eyebrow">Ventas / Comprobantes</div>
-          <h2 class="ad-modal-title">Comprobantes emitidos</h2>
-          <p class="ad-modal-sub">Ventas del {{ formatearRango() }} · Consulta y reimpresión.</p>
-          <button class="ad-modal-x" @click="modalComprobantes = false"><Icon name="x" /></button>
+    <!-- SECCIÓN: REPORTE DE VENTAS -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        <h2 class="text-xl font-bold text-gray-800">Reporte de Ventas</h2>
+        <div class="flex flex-wrap gap-2 items-center w-full lg:w-auto">
+          <input v-model="fechaInicio" type="date" class="p-2 border border-gray-200 rounded-lg text-sm bg-gray-50" />
+          <span class="text-gray-400">a</span>
+          <input v-model="fechaFin" type="date" class="p-2 border border-gray-200 rounded-lg text-sm bg-gray-50" />
+          <button @click="cargarReporte" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-sm transition">Filtrar</button>
+          <button @click="abrirModalComprobantes" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition shadow-sm flex items-center gap-1">
+            📄 Ver Comprobantes
+          </button>
+          <button @click="exportarExcel" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm transition shadow-sm">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto" v-if="reporte.ventas_por_dia?.length">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <th class="p-4 font-semibold">Fecha</th>
+              <th class="p-4 font-semibold text-center">N° Vtas.</th>
+              <th class="p-4 font-semibold text-right">Total Recaudado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
+            <tr v-for="v in reporte.ventas_por_dia" :key="v.dia" class="hover:bg-gray-50">
+              <td class="p-4 font-medium text-gray-800">{{ v.dia }}</td>
+              <td class="p-4 text-center">{{ v.num_ventas }}</td>
+              <td class="p-4 text-right font-bold text-gray-900">S/ {{ Number(v.total).toFixed(2) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="bg-gray-50 font-bold text-gray-900 border-t-2 border-gray-100">
+              <td class="p-4">Total General</td>
+              <td class="p-4 text-center">—</td>
+              <td class="p-4 text-right text-primario">S/ {{ Number(reporte.total_general || 0).toFixed(2) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div v-else class="p-12 text-center text-gray-500 font-medium">
+        No hay ventas registradas en el rango seleccionado.
+      </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL DE COMPROBANTES EMITIDOS -->
+    <div v-if="modalComprobantes" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl w-full max-w-4xl shadow-xl flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+          <div>
+            <h2 class="text-xl font-bold text-gray-800">Comprobantes Emitidos</h2>
+            <p class="text-sm text-gray-500 mt-1">Listado histórico de transacciones realizadas</p>
+          </div>
+          <button @click="modalComprobantes = false" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+        </div>
+        
+        <div class="overflow-y-auto p-4 flex-1">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                <th class="p-3 font-semibold">ID / N°</th>
+                <th class="p-3 font-semibold">Fecha</th>
+                <th class="p-3 font-semibold">Tipo</th>
+                <th class="p-3 font-semibold">Cliente / Razón Social</th>
+                <th class="p-3 font-semibold text-right">Total</th>
+                <th class="p-3 font-semibold text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
+              <tr v-if="listaVentas.length === 0">
+                <td colspan="6" class="p-8 text-center text-gray-500">No hay comprobantes registrados.</td>
+              </tr>
+              <tr v-for="v in listaVentas" :key="v.id_venta" class="hover:bg-gray-50">
+                <td class="p-3 font-bold text-gray-900">#{{ v.id_venta }}</td>
+                <td class="p-3 text-gray-500">{{ v.created_at || v.fecha }}</td>
+                <td class="p-3 uppercase font-semibold text-xs">
+                  <span :class="v.tipo_comprobante === 'factura' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'" class="px-2.5 py-1 rounded-full">
+                    {{ v.tipo_comprobante || 'boleta' }}
+                  </span>
+                </td>
+                <td class="p-3">{{ v.nombre_cliente || v.razon_social || 'Cliente Varios' }} <br><span class="text-xs text-gray-400">{{ v.dni_ruc ? 'Doc: ' + v.dni_ruc : '' }}</span></td>
+                <td class="p-3 text-right font-bold text-gray-800">S/ {{ Number(v.total || v.monto_total || 0).toFixed(2) }}</td>
+                <td class="p-3 text-center">
+                  <button @click="reimprimirComprobante(v)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs transition">
+                    🖨️ Reimprimir
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div class="ad-modal-body">
-          <div class="ad-input-icon">
-            <Icon name="search" />
-            <input v-model="busquedaComprobante" type="text" class="ad-input" placeholder="Buscar número, DNI o RUC" />
-          </div>
-
-          <div class="ad-table-wrap" style="border: 1px solid var(--ad-border); border-radius: 10px">
-            <table class="ad-table">
-              <thead>
-                <tr>
-                  <th>Comprobante</th>
-                  <th>Cliente</th>
-                  <th>Hora</th>
-                  <th>Pago</th>
-                  <th>Total</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="comprobantesFiltrados.length === 0">
-                  <td colspan="6" class="ad-empty">No hay comprobantes registrados.</td>
-                </tr>
-                <tr v-for="v in comprobantesVisibles" :key="v.id_venta">
-                  <td>
-                    <div class="ad-strong">{{ numeroComprobante(v) }}</div>
-                    <div class="ad-muted" style="font-size: 11px">{{ (v.tipo_comprobante || 'boleta') === 'factura' ? 'Factura' : 'Boleta' }}</div>
-                  </td>
-                  <td>
-                    <div>{{ v.nombre_cliente || v.razon_social || 'Cliente varios' }}</div>
-                    <div class="ad-muted" style="font-size: 11px">{{ v.dni_ruc ? ((v.tipo_comprobante === 'factura' ? 'RUC ' : 'DNI ') + v.dni_ruc) : '' }}</div>
-                  </td>
-                  <td>{{ horaVenta(v) }}</td>
-                  <td style="text-transform: capitalize">{{ v.metodo_pago || '—' }}</td>
-                  <td>S/ {{ Number(v.total || v.monto_total || 0).toFixed(2) }}</td>
-                  <td>
-                    <button class="ad-btn ad-btn-outline ad-btn-sm" @click="reimprimirComprobante(v)"><Icon name="printer" /> Reimprimir</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="flex items-center justify-between" style="font-size: 12px">
-            <span class="ad-muted">Mostrando {{ comprobantesVisibles.length }} de {{ comprobantesFiltrados.length }} comprobantes · Total: S/ {{ formatearMiles(totalComprobantes) }}</span>
-            <button v-if="comprobantesVisibles.length < comprobantesFiltrados.length" class="ad-btn ad-btn-outline ad-btn-sm" @click="limiteComprobantes += 10">Ver más</button>
-          </div>
-        </div>
-
-        <div class="ad-modal-foot">
-          <span>Consulta de registros</span>
-          <div class="btns"><button class="ad-btn ad-btn-primary" @click="modalComprobantes = false">Cerrar</button></div>
+        <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl text-right">
+          <button @click="modalComprobantes = false" class="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-lg shadow-md">Cerrar</button>
         </div>
       </div>
     </div>
@@ -289,32 +205,25 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import Icon from '../components/Icon.vue'
 
 const auth = useAuthStore()
 
 const productos = ref([])
-const busquedaProducto = ref('')
-const lineas = ref([]) // [{ producto, cantidad }]
-
-function ventaVacia() {
-  return {
-    metodo_pago: 'efectivo',
-    tipo_comprobante: 'boleta',
-    dni_ruc: '',
-    nombre_cliente: '',
-    razon_social: '',
-    monto_efectivo: 0,
-  }
-}
-const nuevaVenta = ref(ventaVacia())
+const nuevaVenta = ref({ 
+  detalles: [{ id_producto: '', cantidad: 1 }],
+  metodo_pago: 'efectivo',
+  tipo_comprobante: 'boleta',
+  dni_ruc: '',
+  nombre_cliente: '',
+  razon_social: '',
+  monto_efectivo: 0
+})
 
 const errorVenta = ref('')
 const mensajeVenta = ref('')
-const registrando = ref(false)
 
 const fechaInicio = ref(new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10))
 const fechaFin = ref(new Date().toISOString().slice(0, 10))
@@ -322,60 +231,19 @@ const reporte = ref({})
 
 const modalComprobantes = ref(false)
 const listaVentas = ref([])
-const busquedaComprobante = ref('')
-const limiteComprobantes = ref(10)
 
-// ---------- Productos y líneas de la venta ----------
-const sugerencias = computed(() => {
-  const t = busquedaProducto.value.trim().toLowerCase()
-  if (!t) return []
-  return productos.value
-    .filter(p => (p.nombre || '').toLowerCase().includes(t) || (p.codigo || '').toLowerCase().includes(t))
-    .slice(0, 6)
+const calcularTotalVenta = computed(() => {
+  let total = 0
+  for (const d of nuevaVenta.value.detalles) {
+    if (d.id_producto) {
+      const prod = productos.value.find(p => p.id_producto === d.id_producto)
+      if (prod) {
+        total += Number(prod.precio) * Number(d.cantidad || 0)
+      }
+    }
+  }
+  return total
 })
-
-function anadirProducto(p) {
-  const existente = lineas.value.find(l => l.producto.id_producto === p.id_producto)
-  if (existente) {
-    cambiarCantidad(existente, 1)
-  } else {
-    lineas.value.push({ producto: p, cantidad: 1 })
-  }
-  busquedaProducto.value = ''
-  errorVenta.value = ''
-}
-
-function anadirDesdeBusqueda() {
-  const t = busquedaProducto.value.trim().toLowerCase()
-  if (!t) return
-  const exacto = productos.value.find(p => (p.codigo || '').toLowerCase() === t)
-  const elegido = exacto || sugerencias.value[0]
-  if (elegido) anadirProducto(elegido)
-  else errorVenta.value = 'No se encontró ningún producto con ese código o nombre.'
-}
-
-function cambiarCantidad(linea, delta) {
-  const nueva = linea.cantidad + delta
-  if (nueva < 1) return
-  const stock = Number(linea.producto.stock)
-  if (!Number.isNaN(stock) && nueva > stock) {
-    errorVenta.value = `Stock insuficiente de "${linea.producto.nombre}" (disponible: ${stock}).`
-    return
-  }
-  errorVenta.value = ''
-  linea.cantidad = nueva
-}
-
-function quitarLinea(linea) {
-  lineas.value = lineas.value.filter(l => l !== linea)
-}
-
-const calcularTotalVenta = computed(() =>
-  lineas.value.reduce((s, l) => s + Number(l.producto.precio) * l.cantidad, 0)
-)
-const totalUnidades = computed(() => lineas.value.reduce((s, l) => s + l.cantidad, 0))
-const baseImponible = computed(() => calcularTotalVenta.value / 1.18)
-const igv = computed(() => calcularTotalVenta.value - baseImponible.value)
 
 const calcularVuelto = computed(() => {
   const efectivo = Number(nuevaVenta.value.monto_efectivo || 0)
@@ -388,7 +256,7 @@ async function cargarProductos() {
     const { data } = await api.get('/productos', { params: { per_page: 100 } })
     productos.value = data.data ?? data
   } catch (error) {
-    console.error('Error cargando productos:', error)
+    console.error("Error cargando productos:", error)
   }
 }
 
@@ -485,15 +353,9 @@ function imprimirTicket(datosVenta, itemsDetalle, total, efectivo, vuelto) {
   ventanaImpresion.document.close();
 }
 
-
 async function registrarYImprimirVenta() {
   errorVenta.value = ''
   mensajeVenta.value = ''
-
-  if (lineas.value.length === 0) {
-    errorVenta.value = 'Agrega al menos un producto a la venta.'
-    return
-  }
 
   if (nuevaVenta.value.metodo_pago === 'efectivo' && Number(nuevaVenta.value.monto_efectivo) < calcularTotalVenta.value) {
     errorVenta.value = 'El monto con el que paga es menor al total de la venta.'
@@ -505,74 +367,58 @@ async function registrarYImprimirVenta() {
     return
   }
 
-  registrando.value = true
   try {
-    const itemsParaTicket = lineas.value.map(l => ({
-      nombre: l.producto.nombre,
-      cantidad: l.cantidad,
-      precio: l.producto.precio,
-    }))
+    const itemsParaTicket = []
+    for (const d of nuevaVenta.value.detalles) {
+      const prod = productos.value.find(p => p.id_producto === d.id_producto)
+      if (prod) {
+        itemsParaTicket.push({
+          nombre: prod.nombre,
+          cantidad: d.cantidad,
+          precio: prod.precio
+        })
+      }
+    }
 
     const payload = {
-      detalles: lineas.value.map(l => ({ id_producto: l.producto.id_producto, cantidad: l.cantidad })),
+      detalles: nuevaVenta.value.detalles,
       metodo_pago: nuevaVenta.value.metodo_pago,
       tipo_comprobante: nuevaVenta.value.tipo_comprobante,
       dni_ruc: nuevaVenta.value.dni_ruc,
       nombre_cliente: nuevaVenta.value.nombre_cliente,
       razon_social: nuevaVenta.value.razon_social,
       monto_efectivo: nuevaVenta.value.monto_efectivo,
-      vuelto: calcularVuelto.value,
+      vuelto: calcularVuelto.value
     }
 
     await api.post('/ventas', payload)
-
-    mensajeVenta.value = '¡Venta registrada con éxito y comprobante emitido!'
-
+    
+    mensajeVenta.value = `¡Venta registrada con éxito y comprobante emitido!`
+    
     imprimirTicket(
-      nuevaVenta.value,
-      itemsParaTicket,
-      calcularTotalVenta.value,
-      nuevaVenta.value.monto_efectivo,
+      nuevaVenta.value, 
+      itemsParaTicket, 
+      calcularTotalVenta.value, 
+      nuevaVenta.value.monto_efectivo, 
       calcularVuelto.value
     )
-
-    lineas.value = []
-    nuevaVenta.value = ventaVacia()
-
+    
+    nuevaVenta.value = { 
+      detalles: [{ id_producto: '', cantidad: 1 }],
+      metodo_pago: 'efectivo',
+      tipo_comprobante: 'boleta',
+      dni_ruc: '',
+      nombre_cliente: '',
+      razon_social: '',
+      monto_efectivo: 0
+    }
+    
     cargarProductos()
     cargarReporte()
   } catch (e) {
     errorVenta.value = e.response?.data?.message || 'Error al registrar la venta en el servidor.'
-  } finally {
-    registrando.value = false
   }
 }
-
-// ---------- Reporte ----------
-function aFecha(dia) {
-  const [y, m, d] = String(dia).slice(0, 10).split('-').map(Number)
-  return new Date(y, (m || 1) - 1, d || 1)
-}
-
-function etiquetaDia(dia) {
-  const f = aFecha(dia)
-  const sem = f.toLocaleDateString('es-PE', { weekday: 'short' }).replace('.', '')
-  const mes = f.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '')
-  return `${sem.charAt(0).toUpperCase()}${sem.slice(1)} ${f.getDate()} ${mes}`
-}
-
-function formatearMiles(valor) {
-  return Number(valor || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const diasSeleccionados = computed(() => {
-  if (!fechaInicio.value || !fechaFin.value) return 0
-  const dias = Math.round((aFecha(fechaFin.value) - aFecha(fechaInicio.value)) / 86400000) + 1
-  return Math.max(dias, 0)
-})
-
-const ventasPorDiaDesc = computed(() => [...(reporte.value.ventas_por_dia || [])].reverse())
-const totalVentas = computed(() => (reporte.value.ventas_por_dia || []).reduce((s, v) => s + Number(v.num_ventas || 0), 0))
 
 async function cargarReporte() {
   try {
@@ -581,54 +427,20 @@ async function cargarReporte() {
     })
     reporte.value = data
   } catch (error) {
-    console.error('Error cargando reporte:', error)
+    console.error("Error cargando reporte:", error)
   }
 }
-
-// ---------- Comprobantes ----------
-function formatearRango() {
-  const fmt = (d) => aFecha(d).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
-  return fechaInicio.value === fechaFin.value ? fmt(fechaInicio.value) : `${fmt(fechaInicio.value)} al ${fmt(fechaFin.value)}`
-}
-
-function numeroComprobante(v) {
-  const serie = (v.tipo_comprobante || 'boleta') === 'factura' ? 'F001' : 'B001'
-  return `${serie}-${String(v.id_venta).padStart(4, '0')}`
-}
-
-function horaVenta(v) {
-  const f = v.fecha || v.created_at
-  if (!f) return '—'
-  const d = new Date(f)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-
-const comprobantesFiltrados = computed(() => {
-  const t = busquedaComprobante.value.trim().toLowerCase()
-  if (!t) return listaVentas.value
-  return listaVentas.value.filter(v =>
-    numeroComprobante(v).toLowerCase().includes(t) ||
-    String(v.dni_ruc || '').toLowerCase().includes(t) ||
-    String(v.nombre_cliente || v.razon_social || '').toLowerCase().includes(t)
-  )
-})
-const comprobantesVisibles = computed(() => comprobantesFiltrados.value.slice(0, limiteComprobantes.value))
-const totalComprobantes = computed(() => comprobantesFiltrados.value.reduce((s, v) => s + Number(v.total || v.monto_total || 0), 0))
-watch(busquedaComprobante, () => { limiteComprobantes.value = 10 })
 
 async function abrirModalComprobantes() {
   try {
     const { data } = await api.get('/ventas', {
-      params: { fecha_inicio: fechaInicio.value, fecha_fin: fechaFin.value, per_page: 200 },
+      params: { fecha_inicio: fechaInicio.value, fecha_fin: fechaFin.value }
     })
     listaVentas.value = data.data || data
-    busquedaComprobante.value = ''
-    limiteComprobantes.value = 10
     modalComprobantes.value = true
   } catch (error) {
-    console.error('Error al cargar listado de ventas:', error)
-    alert('No se pudo obtener el historial de comprobantes.')
+    console.error("Error al cargar listado de ventas:", error)
+    alert("No se pudo obtener el historial de comprobantes.");
   }
 }
 
@@ -637,21 +449,21 @@ function reimprimirComprobante(venta) {
     nombre: d.producto?.nombre || 'Producto',
     cantidad: d.cantidad,
     precio: d.precio_unitario || (d.pivot ? d.pivot.precio_unitario : 0)
-  })) : [{ nombre: 'Consumo General / Venta #' + venta.id_venta, cantidad: 1, precio: venta.total || venta.monto_total }]
+  })) : [{ nombre: 'Consumo General / Venta #' + venta.id_venta, cantidad: 1, precio: venta.total || venta.monto_total }];
 
   imprimirTicket(
-    {
-      tipo_comprobante: venta.tipo_comprobante || 'boleta',
-      dni_ruc: venta.dni_ruc,
+    { 
+      tipo_comprobante: venta.tipo_comprobante || 'boleta', 
+      dni_ruc: venta.dni_ruc, 
       nombre_cliente: venta.nombre_cliente,
-      razon_social: venta.razon_social,
-      metodo_pago: venta.metodo_pago
+      razon_social: venta.razon_social, 
+      metodo_pago: venta.metodo_pago 
     },
     items,
     Number(venta.total || venta.monto_total || 0),
     Number(venta.monto_efectivo || venta.total || 0),
     Number(venta.vuelto || 0)
-  )
+  );
 }
 
 async function exportarExcel() {
@@ -668,7 +480,7 @@ async function exportarExcel() {
     link.click()
     link.remove()
   } catch (error) {
-    alert('No se pudo exportar el archivo.')
+    alert("No se pudo exportar el archivo.")
   }
 }
 
@@ -677,23 +489,3 @@ onMounted(() => {
   cargarReporte()
 })
 </script>
-
-<style scoped>
-.ventas-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.stepper { display: inline-flex; align-items: center; border: 1px solid var(--ad-border); border-radius: 6px; overflow: hidden; }
-.stepper button { width: 24px; height: 26px; background: #fff; border: 0; cursor: pointer; color: var(--ad-brand); font-size: 14px; }
-.stepper button:hover { background: var(--ad-head); }
-.stepper span { min-width: 26px; text-align: center; font-weight: 600; font-size: 12px; }
-.sugerencias {
-  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); background: #fff;
-  border: 1px solid var(--ad-border); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.12); padding: 4px; max-height: 260px; overflow-y: auto;
-}
-.sugerencias button {
-  display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: none; border: 0;
-  cursor: pointer; padding: 9px 12px; border-radius: 6px; font-size: 13px;
-}
-.sugerencias button:hover { background: var(--ad-head); }
-@media (max-width: 1000px) {
-  .ventas-grid { grid-template-columns: minmax(0, 1fr); }
-}
-</style>

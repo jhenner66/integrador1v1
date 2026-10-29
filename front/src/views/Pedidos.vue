@@ -1,52 +1,57 @@
 <template>
-  <div class="ad-page">
-
-    <!-- Encabezado -->
-    <div class="ad-head">
+  <div class="min-h-screen bg-fondo p-4 md:p-8 font-sans">
+    
+    <!-- Encabezado y Botón Nuevo -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
       <div>
-        <div class="ad-eyebrow"><Icon name="lock" style="width:12px;height:12px" /> Acceso: Administrador y Almacén</div>
-        <h1 class="ad-title">Pedidos a proveedores</h1>
-        <p class="ad-subtitle">Organiza la reposición y sigue cada entrega a tu tienda.</p>
+        <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">Gestión de Pedidos</h1>
+        <p class="text-gray-500 mt-1">Controla las órdenes de compra y abastecimiento de proveedores</p>
       </div>
-      <button v-if="auth.esAdministrador || auth.esAlmacen" class="ad-btn ad-btn-primary" @click="abrirModalNuevoPedido">
-        <Icon name="plus" /> Nuevo pedido
+      <button v-if="auth.esAdministrador || auth.esAlmacen" @click="abrirModalNuevoPedido" 
+        class="bg-primario hover:bg-teal-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+        <span>+</span> Nuevo pedido
       </button>
     </div>
 
-    <!-- 4 tarjetas de estado -->
-    <div class="ad-kpis">
-      <div class="ad-card ad-kpi">
-        <div class="ad-kpi-top"><span>Pendientes</span><Icon name="clock" style="width:16px;height:16px" /></div>
-        <div class="ad-kpi-value">{{ resumen.pendiente ?? resumen.pendientes ?? 0 }}</div>
-        <span class="ad-badge warn">Por confirmar</span>
+    <!-- 4 Tarjetas KPI de Resumen de Estados -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex justify-between items-center">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">Pendientes</p>
+          <h3 class="text-3xl font-bold text-gray-800">{{ resumen.pendientes ?? 0 }}</h3>
+        </div>
+        <div class="bg-amber-100 p-3 rounded-xl text-2xl">⏳</div>
       </div>
-      <div class="ad-card ad-kpi">
-        <div class="ad-kpi-top"><span>En camino</span><Icon name="truck" style="width:16px;height:16px" /></div>
-        <div class="ad-kpi-value">{{ resumen.en_camino ?? 0 }}</div>
-        <span class="ad-badge info">Entrega en curso</span>
+      <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex justify-between items-center">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">En camino</p>
+          <h3 class="text-3xl font-bold text-gray-800">{{ resumen.en_camino ?? 0 }}</h3>
+        </div>
+        <div class="bg-blue-100 p-3 rounded-xl text-2xl">🚚</div>
       </div>
-      <div class="ad-card ad-kpi">
-        <div class="ad-kpi-top"><span>Recibidos</span><Icon name="box" style="width:16px;height:16px" /></div>
-        <div class="ad-kpi-value">{{ resumen.recibido ?? resumen.recibidos ?? 0 }}</div>
-        <span class="ad-badge neutral">Entrega completada</span>
+      <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex justify-between items-center">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">Recibidos</p>
+          <h3 class="text-3xl font-bold text-gray-800">{{ resumen.recibidos ?? 0 }}</h3>
+        </div>
+        <div class="bg-emerald-100 p-3 rounded-xl text-2xl">✅</div>
       </div>
-      <div class="ad-card ad-kpi">
-        <div class="ad-kpi-top"><span>Cancelados</span><Icon name="xCircle" style="width:16px;height:16px" /></div>
-        <div class="ad-kpi-value">{{ resumen.cancelado ?? resumen.cancelados ?? 0 }}</div>
-        <span class="ad-badge neutral">Sin entrega</span>
+      <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 flex justify-between items-center">
+        <div>
+          <p class="text-sm font-medium text-gray-500 mb-1">Cancelados</p>
+          <h3 class="text-3xl font-bold text-gray-800">{{ resumen.cancelados ?? 0 }}</h3>
+        </div>
+        <div class="bg-red-100 p-3 rounded-xl text-2xl">❌</div>
       </div>
     </div>
 
-    <!-- Tabla de pedidos -->
-    <div class="ad-card" style="overflow: visible">
-      <div class="flex items-start justify-between gap-3 flex-wrap" style="padding: 20px 22px 16px">
-        <div>
-          <h2 class="ad-card-title">{{ filtroEstado ? 'Pedidos ' + etiquetaEstado(filtroEstado).toLowerCase() + 's' : 'Todos los pedidos' }}</h2>
-          <p class="ad-card-sub">{{ pedidos.length }} pedidos registrados</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="ad-muted" style="font-size: 12px">Estado</span>
-          <select v-model="filtroEstado" class="ad-select" style="width: 180px" @change="cambiarFiltro">
+    <!-- Panel Principal y Filtro -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h2 class="text-lg font-bold text-gray-800">Pedidos a proveedores</h2>
+        <div class="w-full md:w-auto">
+          <select v-model="filtroEstado" @change="cargarPedidos" 
+            class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500 w-full md:w-auto">
             <option value="">Todos los estados</option>
             <option value="pendiente">Pendiente</option>
             <option value="en_camino">En camino</option>
@@ -56,155 +61,111 @@
         </div>
       </div>
 
-      <div v-if="pedidos.length" class="ad-table-wrap" style="overflow: visible">
-        <table class="ad-table">
+      <div class="overflow-x-auto" v-if="pedidos.length">
+        <table class="w-full text-left border-collapse">
           <thead>
-            <tr>
-              <th>Número</th>
-              <th>Proveedor</th>
-              <th>Fecha</th>
-              <th>Estado</th>
-              <th>Total</th>
-              <th>Acciones</th>
+            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+              <th class="p-4 font-semibold">N° Pedido</th>
+              <th class="p-4 font-semibold">Proveedor</th>
+              <th class="p-4 font-semibold">Fecha</th>
+              <th class="p-4 font-semibold text-center">Estado</th>
+              <th class="p-4 font-semibold text-right">Total</th>
+              <th class="p-4 font-semibold text-center">Acciones</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="p in pedidosPagina" :key="p.id_pedido">
-              <td class="ad-strong">{{ numeroPedido(p.id_pedido) }}</td>
-              <td>{{ p.proveedor?.nombre }}</td>
-              <td>{{ formatearFecha(p.fecha) }}</td>
-              <td><span class="ad-badge" :class="claseEstado(p.estado)">{{ etiquetaEstado(p.estado) }}</span></td>
-              <td>S/ {{ Number(p.total || 0).toFixed(2) }}</td>
-              <td>
-                <div v-if="(auth.esAdministrador || auth.esAlmacen) && p.estado !== 'recibido' && p.estado !== 'cancelado'" style="position: relative; display: inline-block">
-                  <button class="ad-btn ad-btn-outline ad-btn-sm" @click.stop="menuAbierto = menuAbierto === p.id_pedido ? null : p.id_pedido">
-                    <Icon name="chevronDown" style="width:14px;height:14px" /> Cambiar estado
-                  </button>
-                  <div v-if="menuAbierto === p.id_pedido" class="ad-menu">
-                    <button v-if="p.estado !== 'en_camino'" @click="elegirEstado(p, 'en_camino')">En camino</button>
-                    <button @click="elegirEstado(p, 'recibido')">Recibido</button>
-                    <button class="danger" @click="elegirEstado(p, 'cancelado')">Cancelado</button>
-                  </div>
-                </div>
-                <span v-else class="ad-muted" style="font-size: 12px">Estado final</span>
+          <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
+            <tr v-for="p in pedidos" :key="p.id_pedido" class="hover:bg-gray-50 transition-colors">
+              <td class="p-4 font-bold text-gray-900">#{{ p.id_pedido }}</td>
+              <td class="p-4 font-medium text-gray-700">{{ p.proveedor?.nombre }}</td>
+              <td class="p-4 text-gray-500">{{ p.fecha }}</td>
+              <td class="p-4 text-center">
+                <span :class="obtenerColorEstado(p.estado)" class="px-3 py-1 rounded-full text-xs font-bold uppercase">
+                  {{ etiquetaEstado(p.estado) }}
+                </span>
+              </td>
+              <td class="p-4 text-right font-bold text-gray-800">S/ {{ Number(p.total).toFixed(2) }}</td>
+              <td class="p-4 text-center">
+                <select
+                  v-if="(auth.esAdministrador || auth.esAlmacen) && p.estado !== 'recibido' && p.estado !== 'cancelado'"
+                  @change="cambiarEstado(p, $event.target.value)"
+                  class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="">Cambiar estado...</option>
+                  <option value="en_camino" :disabled="p.estado==='en_camino'">En camino</option>
+                  <option value="recibido">Recibido</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+                <span v-else class="text-gray-400">—</span>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-else class="ad-empty">No hay pedidos registrados.</div>
-
-      <div class="ad-foot">
-        <span>Mostrando {{ pedidosPagina.length }} de {{ pedidos.length }} pedidos</span>
-        <div class="ad-pager">
-          <button class="ad-btn ad-btn-outline ad-btn-sm" :disabled="pagina <= 1" @click="pagina--">Anterior</button>
-          <span class="cur">{{ pagina }}</span>
-          <button class="ad-btn ad-btn-outline ad-btn-sm" :disabled="pagina >= totalPaginas" @click="pagina++">Siguiente</button>
-        </div>
+      <div v-else class="p-12 text-center text-gray-500 font-medium">
+        No hay pedidos registrados.
       </div>
     </div>
 
-    <div class="ad-callout info">
-      <Icon name="info" /> Solo los pedidos pendientes o en camino permiten cambiar de estado. Los recibidos y cancelados conservan su estado final.
-    </div>
-
-    <!-- ============ MODAL: NUEVO PEDIDO ============ -->
-    <div v-if="modalNuevo" class="ad-overlay" @click.self="modalNuevo = false">
-      <form class="ad-modal xl" @submit.prevent="guardarPedido">
-        <div class="ad-modal-head">
-          <div class="ad-modal-eyebrow">Pedidos / Nuevo pedido</div>
-          <h2 class="ad-modal-title">Nuevo pedido a proveedor</h2>
-          <p class="ad-modal-sub">Prepara la reposición. El pedido se creará como pendiente.</p>
-          <button type="button" class="ad-modal-x" @click="modalNuevo = false"><Icon name="x" /></button>
-        </div>
-
-        <div class="ad-modal-body">
-          <div v-if="errorModal" class="ad-error">{{ errorModal }}</div>
-
+    <!-- MODAL: NUEVO PEDIDO -->
+    <div v-if="modalNuevo" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Nuevo Pedido a Proveedor</h2>
+        
+        <form @submit.prevent="guardarPedido" class="space-y-4">
           <div>
-            <label class="ad-label">Proveedor *</label>
-            <select v-model="nuevoPedido.id_proveedor" class="ad-select" required>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+            <select v-model="nuevoPedido.id_proveedor" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 bg-white">
               <option disabled value="">Seleccione un proveedor</option>
               <option v-for="pr in proveedores" :key="pr.id_proveedor" :value="pr.id_proveedor">{{ pr.nombre }}</option>
             </select>
           </div>
 
-          <div class="ad-grid2">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="ad-label">Fecha del pedido *</label>
-              <input v-model="nuevoPedido.fecha" type="date" class="ad-input" required />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+              <input v-model="nuevoPedido.fecha" type="date" required class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" />
             </div>
             <div>
-              <label class="ad-label">Entrega estimada *</label>
-              <input v-model="nuevoPedido.fecha_estimada_entrega" type="date" class="ad-input" required />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha estimada de entrega</label>
+              <input v-model="nuevoPedido.fecha_estimada_entrega" type="date" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" />
             </div>
           </div>
 
-          <div class="flex items-center justify-between" style="margin-top: 4px">
-            <h3 class="ad-strong" style="font-size: 14px">Productos del pedido</h3>
-            <button type="button" class="ad-btn ad-btn-outline ad-btn-sm" @click="agregarLinea"><Icon name="plus" /> Añadir producto</button>
-          </div>
-
-          <div class="ad-table-wrap" style="border: 1px solid var(--ad-border); border-radius: 10px">
-            <table class="ad-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th style="width: 100px">Cantidad</th>
-                  <th style="width: 120px">P. unitario</th>
-                  <th style="width: 100px">Importe</th>
-                  <th style="width: 40px"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(d, idx) in nuevoPedido.detalles" :key="idx">
-                  <td>
-                    <select v-model="d.id_producto" class="ad-select" required style="height: 36px">
-                      <option disabled value="">Seleccione producto</option>
-                      <option v-for="pr in productos" :key="pr.id_producto" :value="pr.id_producto">{{ pr.nombre }}{{ pr.codigo ? ' · ' + pr.codigo : '' }}</option>
-                    </select>
-                  </td>
-                  <td><input v-model.number="d.cantidad" type="number" min="1" class="ad-input" style="height: 36px" required /></td>
-                  <td><input v-model.number="d.precio_unitario" type="number" min="0" step="0.01" class="ad-input" style="height: 36px" required /></td>
-                  <td class="ad-strong" style="white-space: nowrap">S/ {{ importeLinea(d).toFixed(2) }}</td>
-                  <td>
-                    <button type="button" class="ad-modal-x" style="position: static" title="Quitar" @click="quitarLinea(idx)"><Icon name="trash" /></button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="ad-panel flex items-center justify-between gap-3">
-            <span class="ad-muted" style="font-size: 12px">{{ nuevoPedido.detalles.length }} {{ nuevoPedido.detalles.length === 1 ? 'producto' : 'productos' }} · {{ totalUnidades }} unidades · Importes en soles</span>
-            <div style="text-align: right">
-              <div class="ad-muted" style="font-size: 10.5px; letter-spacing: .05em">TOTAL DEL PEDIDO</div>
-              <div style="font-size: 24px; font-weight: 600">S/ {{ totalPedido.toFixed(2) }}</div>
+          <div class="border-t border-gray-100 pt-4 mt-4">
+            <h3 class="font-bold text-gray-800 mb-2">Productos del Pedido</h3>
+            
+            <div v-for="(d, idx) in nuevoPedido.detalles" :key="idx" class="flex flex-col md:flex-row gap-2 mb-3 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+              <select v-model="d.id_producto" required class="w-full md:flex-2 p-2 border border-gray-300 rounded-lg bg-white text-sm">
+                <option disabled value="">Seleccione producto</option>
+                <option v-for="pr in productos" :key="pr.id_producto" :value="pr.id_producto">{{ pr.nombre }}</option>
+              </select>
+              <input v-model.number="d.cantidad" type="number" min="1" placeholder="Cant." class="w-full md:w-24 p-2 border border-gray-300 rounded-lg text-sm" required />
+              <input v-model.number="d.precio_unitario" type="number" step="0.01" placeholder="P. Unit." class="w-full md:w-28 p-2 border border-gray-300 rounded-lg text-sm" required />
+              <button type="button" @click="nuevoPedido.detalles.splice(idx,1)" class="text-red-500 hover:text-red-700 font-bold px-2 py-1">✕</button>
             </div>
-          </div>
-          <p class="ad-muted" style="font-size: 12px">La creación del pedido no modifica el stock. La recepción se registra por separado.</p>
-        </div>
 
-        <div class="ad-modal-foot">
-          <span>Los campos marcados con * son obligatorios</span>
-          <div class="btns">
-            <button type="button" class="ad-btn ad-btn-outline" @click="modalNuevo = false">Cancelar</button>
-            <button type="submit" class="ad-btn ad-btn-primary">Crear pedido</button>
+            <button type="button" @click="agregarLinea" class="text-sm font-bold text-primario hover:text-teal-700 mt-2 flex items-center gap-1">
+              + Agregar otro producto
+            </button>
           </div>
-        </div>
-      </form>
+
+          <p v-if="errorModal" class="text-red-600 text-sm font-semibold bg-red-50 p-3 rounded-lg">{{ errorModal }}</p>
+          
+          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+            <button type="button" @click="modalNuevo=false" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold rounded-lg">Cancelar</button>
+            <button type="submit" class="px-5 py-2 bg-primario hover:bg-teal-700 text-white font-bold rounded-lg shadow-md">GUARDAR PEDIDO</button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <!-- Cierra el menú de estado al hacer clic fuera -->
-    <div v-if="menuAbierto !== null" style="position: fixed; inset: 0; z-index: 5" @click="menuAbierto = null"></div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import Icon from '../components/Icon.vue'
 
 const auth = useAuthStore()
 
@@ -213,9 +174,6 @@ const resumen = ref({})
 const filtroEstado = ref('')
 const proveedores = ref([])
 const productos = ref([])
-const pagina = ref(1)
-const POR_PAGINA = 8
-const menuAbierto = ref(null)
 
 const modalNuevo = ref(false)
 const errorModal = ref('')
@@ -224,43 +182,24 @@ const nuevoPedido = ref({ id_proveedor: '', fecha: '', fecha_estimada_entrega: '
 const etiquetas = { pendiente: 'Pendiente', en_camino: 'En camino', recibido: 'Recibido', cancelado: 'Cancelado' }
 function etiquetaEstado(e) { return etiquetas[e] || e }
 
-function claseEstado(estado) {
-  const e = (estado || '').toLowerCase()
-  if (e === 'en_camino') return 'info'
-  if (e === 'pendiente') return 'warn'
-  return 'neutral' // recibido y cancelado: estados finales
+function obtenerColorEstado(estado) {
+  if (!estado) return 'bg-gray-100 text-gray-700';
+  const e = estado.toLowerCase();
+  if (e === 'recibido') return 'bg-emerald-100 text-emerald-700';
+  if (e === 'en_camino') return 'bg-blue-100 text-blue-700';
+  if (e === 'pendiente') return 'bg-amber-100 text-amber-700';
+  if (e === 'cancelado') return 'bg-red-100 text-red-700';
+  return 'bg-gray-100 text-gray-700';
 }
-
-function numeroPedido(id) {
-  return 'OC-' + String(id).padStart(4, '0')
-}
-
-function formatearFecha(f) {
-  if (!f) return '-'
-  const [y, m, d] = String(f).slice(0, 10).split('-')
-  return `${d}/${m}/${y}`
-}
-
-const totalPaginas = computed(() => Math.max(1, Math.ceil(pedidos.value.length / POR_PAGINA)))
-const pedidosPagina = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA
-  return pedidos.value.slice(ini, ini + POR_PAGINA)
-})
 
 async function cargarPedidos() {
   try {
     const { data } = await api.get('/pedidos', { params: { estado: filtroEstado.value } })
     pedidos.value = data.pedidos.data ?? data.pedidos
-    resumen.value = data.resumen_estados || {}
-    if (pagina.value > totalPaginas.value) pagina.value = totalPaginas.value
+    resumen.value = data.resumen_estados
   } catch (error) {
-    console.error('Error al cargar pedidos:', error)
+    console.error("Error al cargar pedidos:", error)
   }
-}
-
-function cambiarFiltro() {
-  pagina.value = 1
-  cargarPedidos()
 }
 
 async function cargarProveedores() {
@@ -268,7 +207,7 @@ async function cargarProveedores() {
     const { data } = await api.get('/proveedores')
     proveedores.value = data
   } catch (error) {
-    console.error('Error al cargar proveedores:', error)
+    console.error("Error al cargar proveedores:", error)
   }
 }
 
@@ -277,11 +216,10 @@ async function cargarProductosBase() {
     const { data } = await api.get('/productos', { params: { per_page: 100 } })
     productos.value = data.data ?? data
   } catch (error) {
-    console.error('Error al cargar productos base:', error)
+    console.error("Error al cargar productos base:", error)
   }
 }
 
-// ---------- Nuevo pedido ----------
 function abrirModalNuevoPedido() {
   nuevoPedido.value = { id_proveedor: '', fecha: new Date().toISOString().slice(0, 10), fecha_estimada_entrega: '', detalles: [] }
   agregarLinea()
@@ -293,23 +231,8 @@ function agregarLinea() {
   nuevoPedido.value.detalles.push({ id_producto: '', cantidad: 1, precio_unitario: 0 })
 }
 
-function quitarLinea(idx) {
-  nuevoPedido.value.detalles.splice(idx, 1)
-}
-
-function importeLinea(d) {
-  return Number(d.cantidad || 0) * Number(d.precio_unitario || 0)
-}
-
-const totalPedido = computed(() => nuevoPedido.value.detalles.reduce((s, d) => s + importeLinea(d), 0))
-const totalUnidades = computed(() => nuevoPedido.value.detalles.reduce((s, d) => s + Number(d.cantidad || 0), 0))
-
 async function guardarPedido() {
   errorModal.value = ''
-  if (!nuevoPedido.value.detalles.length) {
-    errorModal.value = 'Agrega al menos un producto al pedido.'
-    return
-  }
   try {
     await api.post('/pedidos', nuevoPedido.value)
     modalNuevo.value = false
@@ -317,12 +240,6 @@ async function guardarPedido() {
   } catch (e) {
     errorModal.value = e.response?.data?.message || 'Error al registrar el pedido.'
   }
-}
-
-// ---------- Cambio de estado ----------
-function elegirEstado(pedido, nuevoEstado) {
-  menuAbierto.value = null
-  cambiarEstado(pedido, nuevoEstado)
 }
 
 async function cambiarEstado(pedido, nuevoEstado) {
@@ -341,16 +258,3 @@ onMounted(() => {
   cargarProductosBase()
 })
 </script>
-
-<style scoped>
-.ad-menu {
-  position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; min-width: 150px; background: #fff;
-  border: 1px solid var(--ad-border); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.12); padding: 4px;
-}
-.ad-menu button {
-  display: block; width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
-  padding: 8px 12px; border-radius: 6px; font-size: 13px; color: var(--ad-text);
-}
-.ad-menu button:hover { background: var(--ad-head); }
-.ad-menu button.danger { color: var(--ad-danger); }
-</style>
