@@ -27,6 +27,15 @@
           </router-link>
         </nav>
 
+        <template v-if="menuGestion.length">
+          <div class="ad-side-label" style="margin-top: 18px">MANTENIMIENTO</div>
+          <nav class="ad-side-nav">
+            <router-link v-for="item in menuGestion" :key="item.to" :to="item.to" class="ad-side-link" @click="menuLateralAbierto = false">
+              <Icon :name="item.icon" /> {{ item.label }}
+            </router-link>
+          </nav>
+        </template>
+
         <template v-if="menuExtra.length">
           <div class="ad-side-label" style="margin-top: 18px">OTROS MÓDULOS</div>
           <nav class="ad-side-nav">
@@ -246,7 +255,18 @@ const menuPrincipal = computed(() => {
   return items
 })
 
-// Módulos que existen en el sistema pero que no aparecen en el diseño base
+// Mantenimiento de datos maestros (usuarios, proveedores y categorías)
+const menuGestion = computed(() => {
+  const items = []
+  if (auth.esAdministrador) items.push({ to: '/usuarios', label: 'Usuarios', icon: 'users' })
+  if (auth.esAdministrador || auth.esAlmacen) {
+    items.push({ to: '/proveedores', label: 'Proveedores', icon: 'building' })
+    items.push({ to: '/categorias', label: 'Categorías', icon: 'tag' })
+  }
+  return items
+})
+
+// Otros módulos del sistema
 const menuExtra = computed(() => {
   if (!auth.esAdministrador) return []
   return [
@@ -262,6 +282,9 @@ const titulos = {
   ventas: 'Ventas y POS',
   alertas: 'Alertas',
   catalogo: 'Catálogo',
+  usuarios: 'Usuarios',
+  proveedores: 'Proveedores',
+  categorias: 'Categorías',
 }
 const tituloActual = computed(() => titulos[route.name] || 'Panel')
 

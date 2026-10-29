@@ -19,7 +19,7 @@
         <div class="ad-kpi-top"><span>Ventas de {{ mesActual }}</span><Icon name="wallet" style="width:16px;height:16px" /></div>
         <div class="ad-kpi-value">S/ {{ formatear(datos.ventas_del_mes) }}</div>
         <span v-if="tieneVariacion" class="ad-badge" :class="Number(datos.variacion_ventas_pct) >= 0 ? 'ok' : 'danger'">
-          {{ Number(datos.variacion_ventas_pct) >= 0 ? '↗' : '↘' }} {{ Math.abs(Number(datos.variacion_ventas_pct)) }}% vs. mes anterior
+          {{ Number(datos.variacion_ventas_pct) >= 0 ? '+' : '-' }}{{ Math.abs(Number(datos.variacion_ventas_pct)) }}% vs. mes anterior
         </span>
         <span v-else class="ad-badge neutral">Sin mes anterior para comparar</span>
       </div>
@@ -103,7 +103,7 @@
           </tbody>
         </table>
       </div>
-      <div v-else class="ad-empty">No hay productos con stock bajo. 🎉</div>
+      <div v-else class="ad-empty">No hay productos con stock bajo.</div>
 
       <div class="ad-foot" style="justify-content: flex-start">
         <Icon name="refresh" style="width:13px;height:13px" />

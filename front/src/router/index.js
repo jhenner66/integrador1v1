@@ -39,6 +39,24 @@ const routes = [
     meta: { roles: ['administrador'] },
   },
   {
+    path: '/usuarios',
+    name: 'usuarios',
+    component: () => import('../views/Usuarios.vue'),
+    meta: { roles: ['administrador'] },
+  },
+  {
+    path: '/proveedores',
+    name: 'proveedores',
+    component: () => import('../views/Proveedores.vue'),
+    meta: { roles: ['administrador', 'almacen'] },
+  },
+  {
+    path: '/categorias',
+    name: 'categorias',
+    component: () => import('../views/Categorias.vue'),
+    meta: { roles: ['administrador', 'almacen'] },
+  },
+  {
     path: '/catalogo',
     name: 'catalogo',
     component: () => import('../views/Catalogo.vue'),
