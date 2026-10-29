@@ -44,7 +44,7 @@ class DashboardController extends Controller
 
         $productosStockBajoLista = Producto::stockBajo()
             ->where('activo', true)
-            ->select('id_producto', 'codigo', 'nombre', 'stock', 'stock_minimo')
+            ->select('id_producto', 'nombre', 'stock', 'stock_minimo')
             ->limit(10)
             ->get();
 
